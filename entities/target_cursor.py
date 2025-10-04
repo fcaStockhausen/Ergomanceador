@@ -33,6 +33,8 @@ class Target:
             dx, dy: Direction input
             smooth: If True, interpolate (keyboard). If False, instant (controller)
         """
+        import logging
+
         if dx == 0 and dy == 0:
             # No input - cursor returns to player center
             self.target_direction = (0, 0)
@@ -50,9 +52,13 @@ class Target:
 
             if smooth:
                 # Keyboard: smooth interpolation (set target, update in update())
+                if self.target_direction != normalized:
+                    logging.info(f"Keyboard AIM: target direction set to {normalized} (smooth mode)")
                 self.target_direction = normalized
             else:
                 # Controller: instant response
+                if self.aim_direction != normalized:
+                    logging.info(f"Controller AIM: direction set to {normalized} (instant)")
                 self.aim_direction = normalized
                 self.aim_distance = self.max_distance
 

@@ -27,7 +27,7 @@ def magic_system():
 def player():
     """Create a fresh Player instance at default position"""
     from entities.player import Player
-    return Player()
+    return Player(x=10, y=10)  # Default center position
 
 
 @pytest.fixture

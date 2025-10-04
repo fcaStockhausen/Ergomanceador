@@ -16,13 +16,13 @@ class MagicSystem:
         # All available elements (9 total)
         self.all_elements = ['fire', 'lightning', 'water', 'ice', 'earth', 'nature', 'arcane', 'light', 'shadow']
 
-        # Unlocked elements (Phase 3: all 8 elements unlocked for testing)
+        # Unlocked elements (all 9 elements unlocked for testing)
         # TODO Phase 5: Implement progression system to unlock gradually
-        self.unlocked_elements = ['fire', 'water', 'ice', 'earth', 'nature', 'arcane', 'light', 'shadow']
+        self.unlocked_elements = ['fire', 'water', 'ice', 'earth', 'nature', 'arcane', 'light', 'shadow', 'lightning']
 
-        # Element queue (ordered list, max 5 elements)
+        # Element queue (ordered list, max 4 elements like Magicka)
         self.element_queue = []
-        self.max_queue_size = 5
+        self.max_queue_size = 4
 
     def queue_element(self, element):
         """

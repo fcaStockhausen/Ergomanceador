@@ -73,24 +73,24 @@ class TestSmoothInterpolation:
 
     def test_interpolation_speed_configurable(self, target):
         """Lerp speed should affect interpolation rate"""
-        original_speed = target.keyboard_lerp_speed
         target.keyboard_lerp_speed = 100.0  # Very fast
 
         target.set_aim_direction(1, 0, smooth=True)
-        target.update(0.1)
+        target.update(0.01)  # Short time so fast doesn't complete
 
         fast_progress = target.aim_direction[0]
 
         # Reset and test slow speed
         target.aim_direction = (0, 0)
+        target.target_direction = (0, 0)
         target.keyboard_lerp_speed = 1.0  # Very slow
 
         target.set_aim_direction(1, 0, smooth=True)
-        target.update(0.1)
+        target.update(0.01)
 
         slow_progress = target.aim_direction[0]
 
-        assert fast_progress > slow_progress, "Fast lerp should progress more"
+        assert fast_progress > slow_progress, f"Fast lerp ({fast_progress}) should progress more than slow ({slow_progress})"
 
     def test_interpolation_diagonal(self, target):
         """Should interpolate correctly in diagonal directions"""

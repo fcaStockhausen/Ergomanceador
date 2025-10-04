@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Conda
+.conda/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Pygame
+*.pyc
+
+# Logs
+*.log
+game_debug.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Game data (if generated)
+saves/
+screenshots/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Backup files
+*.backup
+*.bak

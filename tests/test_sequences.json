@@ -1,0 +1,83 @@
+{
+  "basic_movement": {
+    "description": "Test basic WASD movement",
+    "duration": 5.0,
+    "sequence": [
+      {"time": 0.0, "key": "w", "action": "press"},
+      {"time": 1.0, "key": "w", "action": "release"},
+      {"time": 1.5, "key": "s", "action": "press"},
+      {"time": 2.5, "key": "s", "action": "release"},
+      {"time": 3.0, "key": "a", "action": "press"},
+      {"time": 4.0, "key": "a", "action": "release"},
+      {"time": 4.5, "key": "d", "action": "press"},
+      {"time": 5.0, "key": "d", "action": "release"}
+    ]
+  },
+  "spell_casting": {
+    "description": "Test element queueing and spell casting",
+    "duration": 8.0,
+    "sequence": [
+      {"time": 0.0, "key": "q", "action": "press"},
+      {"time": 0.1, "key": "q", "action": "release"},
+      {"time": 0.5, "key": "space", "action": "press"},
+      {"time": 0.6, "key": "space", "action": "release"},
+
+      {"time": 1.0, "key": "q", "action": "press"},
+      {"time": 1.1, "key": "q", "action": "release"},
+      {"time": 1.2, "key": "e", "action": "press"},
+      {"time": 1.3, "key": "e", "action": "release"},
+      {"time": 1.5, "key": "space", "action": "press"},
+      {"time": 1.6, "key": "space", "action": "release"},
+
+      {"time": 2.0, "key": "u", "action": "press"},
+      {"time": 2.1, "key": "u", "action": "release"},
+      {"time": 2.5, "key": "space", "action": "press"},
+      {"time": 2.6, "key": "space", "action": "release"},
+
+      {"time": 3.0, "key": "q", "action": "press"},
+      {"time": 3.1, "key": "q", "action": "release"},
+      {"time": 3.2, "key": "e", "action": "press"},
+      {"time": 3.3, "key": "e", "action": "release"},
+      {"time": 3.4, "key": "u", "action": "press"},
+      {"time": 3.5, "key": "u", "action": "release"},
+      {"time": 3.6, "key": "o", "action": "press"},
+      {"time": 3.7, "key": "o", "action": "release"},
+      {"time": 4.0, "key": "space", "action": "press"},
+      {"time": 4.1, "key": "space", "action": "release"}
+    ]
+  },
+  "jump_test": {
+    "description": "Test jumping mechanics",
+    "duration": 3.0,
+    "sequence": [
+      {"time": 0.5, "key": "alt", "action": "press"},
+      {"time": 0.6, "key": "alt", "action": "release"},
+      {"time": 1.5, "key": "alt", "action": "press"},
+      {"time": 1.6, "key": "alt", "action": "release"},
+      {"time": 2.5, "key": "alt", "action": "press"},
+      {"time": 2.6, "key": "alt", "action": "release"}
+    ]
+  },
+  "combined_test": {
+    "description": "Movement + spell casting + jumping",
+    "duration": 10.0,
+    "sequence": [
+      {"time": 0.0, "key": "w", "action": "press"},
+      {"time": 0.5, "key": "q", "action": "press"},
+      {"time": 0.6, "key": "q", "action": "release"},
+      {"time": 1.0, "key": "space", "action": "press"},
+      {"time": 1.1, "key": "space", "action": "release"},
+      {"time": 1.5, "key": "w", "action": "release"},
+      {"time": 2.0, "key": "alt", "action": "press"},
+      {"time": 2.1, "key": "alt", "action": "release"},
+      {"time": 3.0, "key": "q", "action": "press"},
+      {"time": 3.1, "key": "q", "action": "release"},
+      {"time": 3.2, "key": "e", "action": "press"},
+      {"time": 3.3, "key": "e", "action": "release"},
+      {"time": 3.5, "key": "space", "action": "press"},
+      {"time": 3.6, "key": "space", "action": "release"},
+      {"time": 4.0, "key": "d", "action": "press"},
+      {"time": 5.0, "key": "d", "action": "release"}
+    ]
+  }
+}

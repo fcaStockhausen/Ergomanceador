@@ -22,21 +22,65 @@ class Target:
         self.aim_distance = 0.0  # Distance from player (0 = centered on player)
         self.max_distance = ctrl.TARGET_FOLLOW_DISTANCE
 
-    def set_aim_direction(self, dx, dy):
-        """Set aim direction from input (Diablo 3 style - direction from player)"""
+        # Smooth keyboard aiming
+        self.target_direction = (0, 0)  # Target direction for smooth interpolation
+        self.keyboard_lerp_speed = 15.0  # How fast keyboard aim interpolates (higher = faster)
+
+    def set_aim_direction(self, dx, dy, smooth=True):
+        """Set aim direction from input (Diablo 3 style - direction from player)
+
+        Args:
+            dx, dy: Direction input
+            smooth: If True, interpolate (keyboard). If False, instant (controller)
+        """
         if dx == 0 and dy == 0:
             # No input - cursor returns to player center
-            self.aim_direction = (0, 0)
-            self.aim_distance = 0.0
+            self.target_direction = (0, 0)
+            if not smooth:
+                # Controller: instant response
+                self.aim_direction = (0, 0)
+                self.aim_distance = 0.0
             self.color = ORANGE  # Centered
             return
 
         # Normalize to unit vector
         magnitude = math.sqrt(dx**2 + dy**2)
         if magnitude > 0:
-            self.aim_direction = (dx / magnitude, dy / magnitude)
-            self.aim_distance = self.max_distance
+            normalized = (dx / magnitude, dy / magnitude)
+
+            if smooth:
+                # Keyboard: smooth interpolation (set target, update in update())
+                self.target_direction = normalized
+            else:
+                # Controller: instant response
+                self.aim_direction = normalized
+                self.aim_distance = self.max_distance
+
             self.color = RED  # Aiming
+
+    def update(self, dt):
+        """Update smooth keyboard aim interpolation"""
+        # Lerp current direction towards target direction
+        if self.target_direction != self.aim_direction:
+            # Calculate interpolation factor
+            lerp_factor = min(1.0, self.keyboard_lerp_speed * dt)
+
+            # Lerp direction
+            current_x, current_y = self.aim_direction
+            target_x, target_y = self.target_direction
+
+            new_x = current_x + (target_x - current_x) * lerp_factor
+            new_y = current_y + (target_y - current_y) * lerp_factor
+
+            # Normalize if not zero
+            magnitude = math.sqrt(new_x**2 + new_y**2)
+            if magnitude > 0.01:
+                self.aim_direction = (new_x / magnitude, new_y / magnitude)
+                self.aim_distance = self.max_distance
+            else:
+                # Close to zero - snap to center
+                self.aim_direction = (0, 0)
+                self.aim_distance = 0.0
 
     def follow_player(self, player):
         """Position target relative to player (ALWAYS - Diablo 3 style)"""

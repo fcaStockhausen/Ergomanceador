@@ -96,6 +96,7 @@ class Game:
         dt = self.clock.get_time() / 1000.0  # Convert to seconds
         self.camera.follow(self.player)
         self.camera.update(dt)  # Update camera shake
+        self.target.update(dt)  # Update smooth keyboard aim interpolation
         self.effect_manager.update(dt)
 
         # Update enemies

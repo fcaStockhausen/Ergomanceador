@@ -153,10 +153,10 @@ class ControllerHandler:
         if right_x != 0 or right_y != 0:
             # Right stick sets aim direction (overrides movement)
             player.facing_direction = (right_x, right_y)
-            target.set_aim_direction(right_x, right_y)
+            target.set_aim_direction(right_x, right_y, smooth=False)  # Controller = instant
         elif left_x != 0 or left_y != 0:
             # No right stick but moving - aim follows movement
-            target.set_aim_direction(*player.facing_direction)
+            target.set_aim_direction(*player.facing_direction, smooth=False)  # Controller = instant
         else:
             pass  # Let keyboard handle targeting
 

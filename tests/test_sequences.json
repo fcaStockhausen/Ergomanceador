@@ -79,5 +79,31 @@
       {"time": 4.0, "key": "d", "action": "press"},
       {"time": 5.0, "key": "d", "action": "release"}
     ]
+  },
+  "aim_and_shoot": {
+    "description": "Test IJKL aiming + spell casting",
+    "duration": 6.0,
+    "sequence": [
+      {"time": 0.0, "key": "i", "action": "press"},
+      {"time": 0.5, "key": "i", "action": "release"},
+      {"time": 1.0, "key": "q", "action": "press"},
+      {"time": 1.1, "key": "q", "action": "release"},
+      {"time": 1.5, "key": "space", "action": "press"},
+      {"time": 1.6, "key": "space", "action": "release"},
+
+      {"time": 2.0, "key": "l", "action": "press"},
+      {"time": 2.5, "key": "l", "action": "release"},
+      {"time": 3.0, "key": "q", "action": "press"},
+      {"time": 3.1, "key": "q", "action": "release"},
+      {"time": 3.5, "key": "space", "action": "press"},
+      {"time": 3.6, "key": "space", "action": "release"},
+
+      {"time": 4.0, "key": "k", "action": "press"},
+      {"time": 4.5, "key": "k", "action": "release"},
+      {"time": 5.0, "key": "q", "action": "press"},
+      {"time": 5.1, "key": "q", "action": "release"},
+      {"time": 5.5, "key": "space", "action": "press"},
+      {"time": 5.6, "key": "space", "action": "release"}
+    ]
   }
 }

@@ -4,6 +4,9 @@ Karaokeficador - Arena-based elemental magic combat game
 Entry point for the game.
 """
 
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1"
+
 import pygame
 import sys
 from utils.logger import setup_logger

@@ -1,2 +1,4 @@
 pygame>=2.5.0
 setuptools<81
+pytest>=7.4.0
+pytest-cov>=4.0.0

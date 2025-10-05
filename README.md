@@ -1,31 +1,44 @@
 # Karaokeficador
 
-A fast-paced arena game featuring **dual-hand keyboard controls**, an **Avatar-inspired elemental magic system**, and **procedural spell interactions**.
+A Magicka/Warcraft 3 Warlocks-inspired arena combat game with a **property-based magic system**, **dual-hand controls**, **Xbox controller support**, and **AI deathmatch bots**.
 
-Built in Python/Pygame with isometric rendering and property-driven magic mechanics.
+Features emergent spell interactions, expanding AOE effects, and frame-rate independent movement.
+
+![Python](https://img.shields.io/badge/python-3.10-blue.svg)
+![Pygame](https://img.shields.io/badge/pygame-2.6.1-green.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)
 
 ---
 
 ## 🎮 Core Features
 
 ### Dual-Hand Control System
+**Keyboard:**
 - **Left Hand (WASD)**: Player movement in screen-space
 - **Right Hand (IJKL)**: Independent cursor/targeting control
 - **Element Selection**:
-  - Left hand: Q (Fire) / E (Water)
-  - Right hand: U (Earth) / O (Air)
+  - Left hand: Q/E/R/F (Fire, Water, Ice, Earth)
+  - Right hand: U/O/P/; (Nature, Arcane, Light, Shadow)
 - **Actions**:
   - SPACE: Cast spell
-  - ALT: Jump
+  - G: Jump
+  - Backspace: Remove last element
   - ESC / Cmd+Q / Ctrl+Q: Quit
 
-### Xbox Controller Support
-- **Left Stick**: Player movement
-- **Right Stick**: Aim direction (Diablo 3-style)
-- **Face Buttons (ABXY)**: Select primary elements
-- **D-Pad**: Select secondary elements
-- **Triggers**: Cast spells
-- **Haptic Feedback**: Controller rumble on spell cast
+**Xbox Controller (Page-Based):**
+- **Left Stick**: Player movement (analog)
+- **Right Stick**: Aim direction (analog)
+- **Face Buttons (X/Y/B/LB)**: Queue elements from current page
+- **D-Pad Up/Down**: Cycle element pages (3 pages total)
+  - Page 1: Fire, Water, Earth, Nature
+  - Page 2: Lightning, Ice, Arcane, Light
+  - Page 3: Shadow, Nature, Fire, Water
+- **RT**: Aimed cast
+- **LT**: Self-cast
+- **A**: Jump
+- **Back**: Clear queue
+- **Start**: Quit
+- **Rumble Feedback**: Haptic vibration on spell cast and page changes
 
 ### Property-Based Magic System
 Spells are **emergent** - computed from element properties, not hard-coded:
@@ -37,26 +50,45 @@ Water: temperature=293K,  state=liquid, energy=low
 → Temperature differential >500K → Phase change → "Steam Explosion"
 ```
 
-**Element Properties**:
+**9 Elements** with physical properties:
 - `temperature` (K): Enables thermal interactions
 - `energy`: Contributes to damage
-- `state`: solid/liquid/gas/plasma (affects area & duration)
-- `movement`: static/flowing/expanding/rising (behaviors)
+- `density`: Affects projectile speed
+- `volatility`: Affects area/duration
 - `tags`: hot/cold, defensive/destructive (synergies)
 
 **Spell Effects** are procedurally generated:
 - Damage = f(combined energy, temperature)
-- Area = f(state combinations)
+- Area = f(density, volatility)
 - Duration = f(volatility, state)
+- Behavior = f(tags, temperature differentials)
 
-### Combat System
-- **Projectile spells** with particle trails
-- **Collision detection** (circle-circle)
-- **Floating damage numbers** (color-coded by severity)
-- **Screen shake** (scales with damage)
-- **Knockback physics** (friction-based deceleration)
+**Multiple Behaviors:**
+- Projectile (fast-moving spell bolts)
+- Beam (instant line damage)
+- Expanding AOE (radial wave at 15 units/sec)
+- Heal (self or allies)
+- Shield (damage absorption)
+
+### Combat & Arena System
+- **Deathmatch arena** with 3 AI bots
+- **Frame-rate independent** movement (200 units/second base speed)
+- **Q3-style scoreboard** with kill tracking
+- **3-second countdown** before game start
+- **Projectile spells** with collision detection
+- **Expanding AOE effects** with visual ring and wave damage
+- **Floating damage/heal numbers** (color-coded)
+- **Screen shake** and knockback effects
 - **Procedural sound effects** (cast/impact/death)
-- **Health bars** with damage flash
+- **Health bars** with damage flash (300 HP, higher TTK)
+
+### AI System
+- **Behavior state machine**: Attack, flee, wander
+- **Smart fleeing**: Picks safe destinations 20 units away, not random running
+- **Combat positioning**: Maintains preferred distance (8 units) with dead zones
+- **Behavior change cooldowns**: Prevents jittery rapid switching (0.5s)
+- **Bots vs bots**: AI enemies fight each other, not just player
+- **Spell casting**: Cooldown-based spell use (3.5 seconds)
 
 ### Isometric Rendering
 - **Coordinate systems**:
@@ -64,9 +96,10 @@ Water: temperature=293K,  state=liquid, energy=low
   - **Screen**: User input coordinates
   - **Isometric**: Display projection
 - **Transforms**:
-  - `screen_to_cart()`: Input → Movement
+  - `screen_to_cart()`: Input → Movement (prevents "rotated 45°" feeling)
   - `cart_to_iso()`: Position → Render
-- Players rendered as 3D cylinders with shadows
+- Players rendered as 3D cylinders with ground shadows
+- Camera follow system (player-centered)
 
 ---
 
@@ -105,49 +138,83 @@ python tests/test_runner.py spell_casting
 ## 📁 Project Structure
 
 ```
-Karaokeficador/
-├── audio/              # Sound system (procedural audio)
-├── components/         # Reusable components (health, etc.)
-├── config/             # Settings, keybinds, controller config
-├── core/               # Game loop, camera system
-├── data/               # Element definitions (JSON)
-├── entities/           # Player, enemies, cursor
-├── input/              # Keyboard + controller handling
-├── magic/              # Element system + interaction engine
-├── physics/            # Collision detection
-├── rendering/          # Isometric rendering, UI, effects
-│   ├── effects/        # Projectiles, particles
-│   └── ui/             # HUD, damage numbers, spell preview
-├── tests/              # TAS testing system
-├── utils/              # Logging utilities
-└── main.py             # Entry point
+karaokeficador/
+├── main.py                          # Entry point
+├── config/                          # Configuration & constants
+│   ├── settings.py                  # Screen size, FPS, movement speed
+│   ├── colors.py                    # Color constants, element colors
+│   └── controller_config.py         # Xbox controller mappings
+├── core/                            # Game loop & camera
+│   ├── game.py                      # Main Game class, countdown, scoreboard
+│   └── camera.py                    # Camera follow system
+├── magic/                           # Property-based magic system
+│   ├── element.py                   # Element class (9 elements)
+│   ├── interaction_engine.py        # Automatic spell computation
+│   └── magic_system.py              # Element queueing (max 5)
+├── entities/                        # Game entities
+│   ├── player.py                    # Player entity (300 HP)
+│   ├── enemy.py                     # Enemy bots
+│   ├── target_cursor.py             # Aiming cursor
+│   └── components/
+│       └── health.py                # Health component
+├── ai/                              # Bot AI system
+│   └── bot_controller.py            # Attack/flee/wander behaviors
+├── combat/                          # Combat systems
+│   ├── projectile.py                # Spell projectiles
+│   ├── collision_detector.py        # Collision detection
+│   └── damage_calculator.py         # Damage computation
+├── rendering/                       # All rendering code
+│   ├── isometric.py                 # Coordinate transforms
+│   ├── grid_renderer.py             # Isometric grid drawing
+│   ├── effects/
+│   │   ├── expanding_aoe.py         # Radially expanding AOE
+│   │   ├── damage_number.py         # Floating damage numbers
+│   │   └── effect_manager.py        # Manages visual effects
+│   └── ui/                          # UI components
+│       ├── hud.py                   # Element queue, health bars
+│       ├── spell_preview.py         # Real-time spell stats
+│       ├── debug_panel.py           # Debug overlay
+│       ├── controller_hud.py        # Controller element pages
+│       └── scoreboard.py            # Deathmatch scoreboard
+├── input/                           # Input handling
+│   ├── input_manager.py             # Unified keyboard + controller
+│   └── controller_handler.py        # Xbox controller support
+├── audio/                           # Procedural audio generation
+│   ├── sound_generator.py           # Runtime waveform synthesis
+│   └── sound_library.py             # Sound effect manager
+├── tests/                           # TAS testing framework
+│   ├── test_runner.py               # Test execution engine
+│   └── tas/                         # Test scripts (14 verified tests)
+└── utils/
+    └── logger.py                    # Event-based logging
 ```
 
-**Stats**: 3,410 lines of Python across 43 files
+**Stats**: ~5,200 lines of Python code across 17 modules
 
 ---
 
-## 🎯 Development Roadmap
+## 🎯 Current Status
 
-### ✅ Completed (Phase 1-5C)
-- Modular architecture
-- Property-based magic system
-- Dual-hand keyboard + Xbox controller input
-- Isometric rendering with camera follow
-- Spell casting with projectiles and particles
-- Enemy combat system
-- Combat polish (damage numbers, screen shake, sound, knockback)
+### ✅ Completed Features
+- **Core Gameplay**: Isometric arena, frame-rate independent movement, 3-second countdown
+- **Property-Based Magic**: 9 elements, emergent interactions, element queueing (max 5)
+- **Combat System**: Projectiles, expanding AOE, damage/heal, knockback, screen shake
+- **AI System**: Attack/flee/wander behaviors, destination-based fleeing, bots vs bots
+- **Dual-Input**: Keyboard + Xbox controller (page-based element selection)
+- **Visual Polish**: Floating damage numbers, health bars, scoreboard, procedural audio
+- **Testing**: TAS framework (14 tests), pytest integration (70 tests)
+- **Modular Architecture**: ~5,200 LOC across 17 specialized modules
 
-### 🚧 In Progress
-- Wave system
-- Enemy AI
-- Progression system
+### 🚧 Known Issues
+- Target cursor uses cartesian movement (not screen-space transformed)
+- Grid boundaries hard-coded (20x20 area)
+- Bot wander could be smoother (direction interpolation not implemented)
+- No terrain obstacles or environment collision
 
-### 📝 Planned
-- Multiple enemy types
-- Boss encounters
-- Procedural arena generation
-- Networked multiplayer (stretch goal)
+### 📝 Future Development
+- **Polish**: Spell particles, arena terrain, victory conditions, element unlocking
+- **Gameplay**: More spell behaviors, element cancellation, combo system
+- **Technical**: JSON element definitions, network multiplayer, replay system
 
 ---
 
@@ -163,11 +230,12 @@ The isometric map is treated as a **manifold** with local coordinates:
 This prevents the common isometric bug where controls feel "rotated 45°".
 
 ### Debug Mode
-Enable in [main.py](main.py) (`DEBUG_MODE = True`):
-- Real-time coordinate display
+Enabled by default in `config/settings.py` (`DEBUG_MODE = True`):
+- Real-time coordinate display (bottom-right panel)
 - Movement vector arrows
+- Bot position tracing (every 0.5 seconds)
 - Input → Cartesian transformation visualization
-- Event logging (`game_debug.log`)
+- Event logging to `game_debug.log`
 
 ### Platform Support
 - **Primary**: macOS (ARM64)

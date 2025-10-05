@@ -61,10 +61,11 @@ class InteractionEngine:
         behavior = self._determine_behavior(elems, states, all_tags, modified_energy, avg_volatility)
 
         # 6. Compute derived stats
-        damage = int(modified_energy * 0.6)  # 60% of energy becomes damage
-        projectile_speed = (1.0 - avg_density) * 10  # Low density = fast (0.1 density → 9 speed)
+        damage = int(modified_energy * 2.5)  # 250% of energy becomes damage (much more dangerous!)
+        projectile_speed = (1.0 - avg_density) * 1.2  # 50% slower than before (was 2.4)
         area = self._compute_area(behavior, avg_volatility, states)
         duration = self._compute_duration(behavior, states)
+        mana_cost = self._compute_mana_cost(modified_energy, len(elems))
 
         # 7. Generate procedural spell name
         spell_name = self._generate_name(elems, behavior, temp_range, states, all_tags)
@@ -80,8 +81,10 @@ class InteractionEngine:
             'speed': projectile_speed,
             'area': area,
             'duration': duration,
+            'mana_cost': mana_cost,
             'color': spell_color,
             'effects': list(all_tags),
+            'elements': element_names,  # Store element names for terrain bonuses
             'properties': {
                 'temperature': avg_temp,
                 'energy': modified_energy,
@@ -126,8 +129,12 @@ class InteractionEngine:
     def _determine_behavior(self, elems, states, tags, energy, volatility):
         """
         Determine spell behavior type from element properties.
-        Returns: 'projectile', 'beam', 'aoe', 'area_denial', 'buff', 'homing'
+        Returns: 'projectile', 'beam', 'aoe', 'area_denial', 'buff', 'homing', 'heal'
         """
+        # Healing if has healing tag
+        if 'healing' in tags:
+            return 'heal'
+
         # Self-buff if single element + defensive tag
         if len(elems) == 1 and 'defensive' in tags:
             return 'buff'
@@ -225,6 +232,13 @@ class InteractionEngine:
                 return 'Stone Barrier'
             return 'Elemental Zone'
 
+        if behavior == 'heal':
+            if 'nature' in [e.name for e in elems]:
+                return 'Healing Touch'
+            if 'light' in [e.name for e in elems]:
+                return 'Divine Heal'
+            return 'Restoration'
+
         if behavior == 'buff':
             if 'earth' in [e.name for e in elems]:
                 return 'Stone Skin'
@@ -282,3 +296,17 @@ class InteractionEngine:
         b = sum(e.color[2] for e in elems) // len(elems)
 
         return (r, g, b)
+
+    def _compute_mana_cost(self, energy, element_count):
+        """
+        Compute mana cost based on spell power.
+
+        Formula: base_cost_per_element * element_count + (energy * 0.15)
+        - More elements = higher cost
+        - More energy/damage = higher cost
+        """
+        base_cost_per_element = 8  # 8 mana per element
+        energy_factor = 0.15  # 15% of energy
+
+        cost = (base_cost_per_element * element_count) + (energy * energy_factor)
+        return int(max(5, cost))  # Minimum 5 mana

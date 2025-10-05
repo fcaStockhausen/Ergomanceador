@@ -50,9 +50,13 @@ class MagicSystem:
         """Clear all queued elements"""
         self.element_queue = []
 
-    def cast_spell(self):
+    def cast_spell(self, mana=None):
         """
         Cast queued spell and clear queue.
+
+        Args:
+            mana: Optional Mana component to consume mana from
+
         Returns spell effect data or None.
         """
         if not self.element_queue:
@@ -60,9 +64,18 @@ class MagicSystem:
             return None
 
         effect = self.engine.compute_interaction(self.element_queue)
+
+        # Check and consume mana if provided
+        if mana:
+            mana_cost = effect.get('mana_cost', 0)
+            if not mana.consume(mana_cost):
+                # Insufficient mana - don't cast
+                logging.info(f"Cannot cast {effect['name']}: insufficient mana (need {mana_cost})")
+                return None
+
         logging.info(f"AIMED CAST: {effect['name']}")
         logging.info(f"  Behavior: {effect['behavior']}")
-        logging.info(f"  Damage: {effect['damage']}, Area: {effect['area']}, Duration: {effect['duration']}s")
+        logging.info(f"  Damage: {effect['damage']}, Area: {effect['area']}, Duration: {effect['duration']}s, Mana: {effect.get('mana_cost', 0)}")
 
         self.element_queue = []  # Clear queue after casting
         return effect

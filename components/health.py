@@ -99,3 +99,11 @@ class Health:
     def is_flashing(self):
         """Check if currently in damage flash state (for visual feedback)"""
         return self.damage_flash_timer > 0
+
+    def respawn(self):
+        """Respawn entity with full health"""
+        self.current_health = self.max_health
+        self.is_alive = True
+        self.damage_flash_timer = 0.0
+        self.last_damage = 0
+        logging.info(f"Entity respawned with {self.max_health} health")

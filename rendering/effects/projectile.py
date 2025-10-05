@@ -12,7 +12,7 @@ class Projectile:
     Supports multiple behaviors: projectile, beam, homing.
     """
 
-    def __init__(self, start_x, start_y, target_x, target_y, spell_data):
+    def __init__(self, start_x, start_y, target_x, target_y, spell_data, owner='player'):
         """
         Create projectile.
 
@@ -20,11 +20,13 @@ class Projectile:
             start_x, start_y: Starting cartesian position (player)
             target_x, target_y: Target cartesian position (cursor)
             spell_data: Dict with spell properties (name, damage, area, behavior, color, etc.)
+            owner: 'player' or 'bot' - who cast this spell
         """
         self.cart_x = start_x
         self.cart_y = start_y
         self.target_x = target_x
         self.target_y = target_y
+        self.owner = owner  # Track who cast this projectile
 
         self.spell_data = spell_data
         self.behavior = spell_data['behavior']

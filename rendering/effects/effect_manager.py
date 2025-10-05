@@ -3,6 +3,7 @@
 import logging
 from rendering.effects.projectile import Projectile
 from rendering.effects.particle import ParticleEmitter
+from rendering.effects.expanding_aoe import ExpandingAOE
 from rendering.ui.damage_numbers import DamageNumberManager
 from physics.collision import CollisionChecker
 from audio.sound_manager import SoundManager
@@ -18,30 +19,34 @@ class EffectManager:
     def __init__(self):
         self.projectiles = []
         self.emitters = []
+        self.expanding_aoes = []  # Radially expanding AOE effects
         self.enemies = []  # Reference to enemy list (set by Game)
+        self.player = None  # Reference to player (set by Game)
+        self.terrain = None  # Reference to terrain (set by Game) for damage bonuses
         self.damage_numbers = DamageNumberManager()  # Floating damage numbers
         self.camera = None  # Reference to camera (set by Game) for screen shake
         self.sound = SoundManager(enabled=True)  # Sound effects
 
-    def spawn_spell_effect(self, player_x, player_y, target_x, target_y, spell_data):
+    def spawn_spell_effect(self, player_x, player_y, target_x, target_y, spell_data, owner='player'):
         """
         Spawn visual effect based on spell behavior.
 
         Args:
-            player_x, player_y: Player cartesian position
+            player_x, player_y: Caster cartesian position
             target_x, target_y: Target cartesian position
             spell_data: Dict with spell properties
+            owner: 'player' or 'bot' - who cast this spell
         """
         behavior = spell_data.get('behavior', 'projectile')
         color = spell_data.get('color', (255, 255, 255))
         area = spell_data.get('area', 1.0)
         duration = spell_data.get('duration', 1.0)
 
-        logging.info(f"Spawning {behavior} effect: {spell_data.get('name', 'Unknown')}")
+        logging.info(f"Spawning {behavior} effect: {spell_data.get('name', 'Unknown')} (owner: {owner})")
 
         if behavior == 'projectile':
             # Create projectile + trail particles
-            proj = Projectile(player_x, player_y, target_x, target_y, spell_data)
+            proj = Projectile(player_x, player_y, target_x, target_y, spell_data, owner=owner)
             self.projectiles.append(proj)
 
             # Play cast sound
@@ -52,7 +57,7 @@ class EffectManager:
 
         elif behavior == 'beam':
             # Instant beam visual
-            proj = Projectile(player_x, player_y, target_x, target_y, spell_data)
+            proj = Projectile(player_x, player_y, target_x, target_y, spell_data, owner=owner)
             self.projectiles.append(proj)
 
             # Beam impact particles at target
@@ -66,15 +71,25 @@ class EffectManager:
             self.emitters.append(emitter)
 
         elif behavior == 'aoe':
-            # Expanding explosion at target
-            emitter = ParticleEmitter(
+            # Create expanding AOE effect
+            expansion_speed = 15.0  # Radius units per second
+            duration = 0.8  # Total expansion duration
+
+            aoe = ExpandingAOE(
                 target_x, target_y,
-                'aoe',
-                color,
-                duration=0.8,
-                area=area * 2  # Larger visual
+                max_radius=area,
+                color=color,
+                spell_data=spell_data,
+                owner=owner,
+                expansion_speed=expansion_speed,
+                duration=duration
             )
-            self.emitters.append(emitter)
+            self.expanding_aoes.append(aoe)
+
+            # Screen shake and sound for AOE
+            if self.camera:
+                self.camera.shake(intensity=10.0, duration=0.2)
+            self.sound.play('impact', volume=0.8)
 
         elif behavior == 'area_denial':
             # Persistent zone at target
@@ -86,6 +101,27 @@ class EffectManager:
                 area=area
             )
             self.emitters.append(emitter)
+
+        elif behavior == 'heal':
+            # Healing spell - heal caster
+            heal_amount = spell_data.get('damage', 50)  # Use damage stat as heal amount
+
+            if owner == 'player' and self.player:
+                self.player.health.heal(heal_amount)
+                logging.info(f"Healed player for {heal_amount} HP!")
+                if self.damage_numbers:
+                    self.damage_numbers.spawn(heal_amount, player_x, player_y, is_heal=True)
+
+            # Healing particles
+            emitter = ParticleEmitter(
+                player_x, player_y,
+                'buff',  # Use buff visual for healing
+                color,
+                duration=1.0,
+                area=1.5
+            )
+            self.emitters.append(emitter)
+            self.sound.play('cast', volume=0.5)
 
         elif behavior == 'buff':
             # Aura around player (not target)
@@ -100,55 +136,92 @@ class EffectManager:
 
         elif behavior == 'homing':
             # Homing projectile
-            proj = Projectile(player_x, player_y, target_x, target_y, spell_data)
+            proj = Projectile(player_x, player_y, target_x, target_y, spell_data, owner=owner)
             self.projectiles.append(proj)
 
     def update(self, dt):
         """Update all effects and check collisions"""
+        import math
+
         # Update projectiles and check hits
         for proj in self.projectiles[:]:
             proj.update(dt)
 
-            # Check collision with enemies
             if proj.alive:
-                hit_enemy = CollisionChecker.projectile_vs_entities(
-                    proj,
-                    [e for e in self.enemies if e.health.is_alive],
-                    entity_radius=0.5
-                )
+                # Player projectiles hit enemies
+                if proj.owner == 'player':
+                    hit_enemy = CollisionChecker.projectile_vs_entities(
+                        proj,
+                        [e for e in self.enemies if e.health.is_alive],
+                        entity_radius=0.5
+                    )
 
-                if hit_enemy:
-                    # Deal damage
-                    damage = proj.spell_data.get('damage', 10)
-                    hit_enemy.health.damage(damage)
-                    logging.info(f"Projectile hit enemy! Dealt {damage} damage")
+                    if hit_enemy:
+                        # Deal damage with terrain bonus
+                        base_damage = proj.spell_data.get('damage', 10)
+                        damage = base_damage
 
-                    # Spawn floating damage number
-                    self.damage_numbers.spawn(damage, hit_enemy.cart_x, hit_enemy.cart_y)
+                        # Apply terrain damage bonus if available
+                        if self.terrain and 'elements' in proj.spell_data:
+                            elements = proj.spell_data.get('elements', [])
+                            bonus = self.terrain.get_damage_bonus_at(hit_enemy.cart_x, hit_enemy.cart_y, elements)
+                            damage = int(base_damage * bonus)
+                            if bonus > 1.0:
+                                logging.info(f"Terrain bonus: {bonus}x damage!")
 
-                    # Screen shake on impact
-                    if self.camera:
-                        # Stronger shake for more damage
-                        shake_intensity = min(5.0 + (damage * 0.3), 15.0)
-                        self.camera.shake(intensity=shake_intensity, duration=0.15)
+                        hit_enemy.health.damage(damage)
+                        logging.info(f"Projectile hit enemy! Dealt {damage} damage")
 
-                    # Impact sound
-                    self.sound.play('impact', volume=0.6)
+                        # Spawn floating damage number
+                        self.damage_numbers.spawn(damage, hit_enemy.cart_x, hit_enemy.cart_y)
 
-                    # Apply knockback
-                    import math
-                    knockback_force = 3.0 + (damage * 0.05)  # Stronger for more damage
-                    dx = hit_enemy.cart_x - proj.cart_x
-                    dy = hit_enemy.cart_y - proj.cart_y
+                        # Screen shake on impact
+                        if self.camera:
+                            shake_intensity = min(5.0 + (damage * 0.3), 15.0)
+                            self.camera.shake(intensity=shake_intensity, duration=0.15)
+
+                        # Impact sound
+                        self.sound.play('impact', volume=0.6)
+
+                        # Apply knockback
+                        knockback_force = 3.0 + (damage * 0.05)
+                        dx = hit_enemy.cart_x - proj.cart_x
+                        dy = hit_enemy.cart_y - proj.cart_y
+                        distance = math.sqrt(dx**2 + dy**2)
+                        if distance > 0.01:
+                            dir_x = dx / distance
+                            dir_y = dy / distance
+                            hit_enemy.apply_knockback(dir_x, dir_y, knockback_force)
+
+                        # Kill projectile
+                        proj.alive = False
+
+                # Bot projectiles hit player
+                elif proj.owner == 'bot' and self.player and self.player.health.is_alive:
+                    # Check collision with player
+                    dx = self.player.cart_x - proj.cart_x
+                    dy = self.player.cart_y - proj.cart_y
                     distance = math.sqrt(dx**2 + dy**2)
-                    if distance > 0.01:
-                        # Normalize direction
-                        dir_x = dx / distance
-                        dir_y = dy / distance
-                        hit_enemy.apply_knockback(dir_x, dir_y, knockback_force)
 
-                    # Kill projectile
-                    proj.alive = False
+                    if distance <= self.player.collision_radius:
+                        # Hit player!
+                        damage = proj.spell_data.get('damage', 10)
+                        self.player.health.damage(damage)
+                        logging.info(f"Bot projectile hit player! Dealt {damage} damage")
+
+                        # Spawn floating damage number
+                        self.damage_numbers.spawn(damage, self.player.cart_x, self.player.cart_y)
+
+                        # Screen shake
+                        if self.camera:
+                            shake_intensity = min(5.0 + (damage * 0.3), 15.0)
+                            self.camera.shake(intensity=shake_intensity, duration=0.15)
+
+                        # Impact sound
+                        self.sound.play('impact', volume=0.6)
+
+                        # Kill projectile
+                        proj.alive = False
 
             if not proj.alive:
                 # Spawn explosion on impact for projectiles
@@ -170,6 +243,12 @@ class EffectManager:
             if not emitter.alive:
                 self.emitters.remove(emitter)
 
+        # Update expanding AOEs
+        for aoe in self.expanding_aoes[:]:
+            aoe.update(dt, self.enemies, self.player, self.terrain, self.damage_numbers, self.sound)
+            if not aoe.alive:
+                self.expanding_aoes.remove(aoe)
+
         # Update damage numbers
         self.damage_numbers.update(dt)
 
@@ -178,6 +257,10 @@ class EffectManager:
         # Draw projectiles
         for proj in self.projectiles:
             proj.draw(screen, camera_offset_x, camera_offset_y)
+
+        # Draw expanding AOEs
+        for aoe in self.expanding_aoes:
+            aoe.draw(screen, camera_offset_x, camera_offset_y)
 
         # Draw particles
         for emitter in self.emitters:
@@ -190,4 +273,5 @@ class EffectManager:
         """Clear all active effects"""
         self.projectiles.clear()
         self.emitters.clear()
+        self.expanding_aoes.clear()
         self.damage_numbers.clear_all()

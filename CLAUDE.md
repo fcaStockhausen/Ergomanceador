@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Karaokeficador - A game interaction engine with dual-hand keyboard controls, Xbox controller support, and an Avatar-style elemental magic system with procedural spell effects.
+Karaokeficador - A Magicka/Warcraft 3 Warlocks-inspired arena combat game with property-based magic system, dual-hand controls, Xbox controller support, and deathmatch AI bots. Features emergent spell interactions, expanding AOE effects, and frame-rate independent movement.
 
 ## Development Environment
 
@@ -34,6 +34,13 @@ python main.py
 # Quit game: ESC or Cmd+Q (Mac) / Ctrl+Q (Windows/Linux)
 ```
 
+**IMPORTANT for Claude Code:**
+Always use the conda environment when running Python commands or installing packages:
+```bash
+source /Users/fcaraneda/anaconda3/bin/activate karaokeficador && python <script>
+source /Users/fcaraneda/anaconda3/bin/activate karaokeficador && pip install <package>
+```
+
 ## Debug Mode
 
 Debug interface enabled by default (`DEBUG_MODE = True` in [config/settings.py](config/settings.py)):
@@ -44,37 +51,58 @@ Debug interface enabled by default (`DEBUG_MODE = True` in [config/settings.py](
 
 ## Modular Architecture
 
-The codebase is organized into specialized modules for scalability:
+The codebase is organized into specialized modules (~5,200 LOC):
 
 ```
 karaokeficador/
-├── main.py                          # Entry point (~30 lines)
+├── main.py                          # Entry point
 ├── config/                          # Configuration & constants
-│   ├── settings.py                  # Screen size, FPS, grid size
-│   └── colors.py                    # Color constants, element colors
+│   ├── settings.py                  # Screen size, FPS, movement speed (BASE_MOVEMENT_SPEED=200)
+│   ├── colors.py                    # Color constants, element colors
+│   └── controller_config.py         # Xbox controller mappings (macOS D-pad buttons)
 ├── core/                            # Game loop & camera
-│   ├── game.py                      # Main Game class with game loop
+│   ├── game.py                      # Main Game class, 3-second countdown, scoreboard
 │   └── camera.py                    # Camera follow system
-├── magic/                           # Magic interaction system
-│   ├── element.py                   # Element class
-│   ├── interaction_engine.py        # Property-based spell computation
-│   ├── magic_system.py              # Player-facing spell API
-│   └── behaviors/                   # (Future: spell behavior classes)
+├── magic/                           # Property-based magic system
+│   ├── element.py                   # Element class (9 elements with properties)
+│   ├── interaction_engine.py        # Automatic spell computation from properties
+│   └── magic_system.py              # Element queueing (max 5), spell generation
 ├── entities/                        # Game entities
-│   ├── player.py                    # Player entity
-│   └── target_cursor.py             # IJKL-controlled cursor
+│   ├── player.py                    # Player entity (300 HP, frame-rate independent movement)
+│   ├── enemy.py                     # Enemy bots with Health component
+│   ├── target_cursor.py             # Aiming cursor (keyboard/controller)
+│   └── components/
+│       └── health.py                # Health component with death handling
+├── ai/                              # Bot AI system
+│   └── bot_controller.py            # Attack/flee/wander behaviors, destination-based fleeing
+├── combat/                          # Combat systems
+│   ├── projectile.py                # Spell projectiles (1.2 units/sec, 2.5x damage)
+│   ├── collision_detector.py        # Projectile-entity collision detection
+│   └── damage_calculator.py         # Damage computation with knockback
 ├── rendering/                       # All rendering code
-│   ├── isometric.py                 # Coordinate transforms
+│   ├── isometric.py                 # Coordinate transforms (cart↔iso↔screen)
 │   ├── grid_renderer.py             # Isometric grid drawing
+│   ├── effects/
+│   │   ├── expanding_aoe.py         # Radially expanding AOE (15 units/sec expansion)
+│   │   ├── damage_number.py         # Floating damage/heal numbers
+│   │   └── effect_manager.py        # Manages all visual effects
 │   └── ui/                          # UI components
-│       ├── hud.py                   # Controls, active elements
-│       ├── spell_preview.py         # Real-time spell preview
-│       └── debug_panel.py           # Debug overlay
-├── input/                           # (Future: input management)
-├── physics/                         # (Future: collision, projectiles)
-├── utils/                           # Utilities
-│   └── logger.py                    # Logging setup
-└── data/                            # (Future: JSON data files)
+│       ├── hud.py                   # Element queue, health bars
+│       ├── spell_preview.py         # Real-time spell stats preview
+│       ├── debug_panel.py           # Debug overlay with coordinates
+│       ├── controller_hud.py        # Controller element page display (3 pages)
+│       └── scoreboard.py            # Deathmatch scoreboard (Q3-style)
+├── input/                           # Input handling
+│   ├── input_manager.py             # Unified keyboard + controller input
+│   └── controller_handler.py        # Xbox controller (D-pad buttons, rumble feedback)
+├── audio/                           # Procedural audio generation
+│   ├── sound_generator.py           # Runtime waveform synthesis
+│   └── sound_library.py             # Sound effect manager
+├── tests/                           # TAS testing framework
+│   ├── test_runner.py               # Test execution engine
+│   └── tas/                         # Test scripts (14 verified tests)
+└── utils/
+    └── logger.py                    # Event-based logging
 ```
 
 ## Architecture
@@ -104,19 +132,22 @@ karaokeficador/
    - **Backspace:** Remove last element from queue
    - **ESC or Cmd+Q/Ctrl+Q:** Quit game
 
-   **Xbox Controller Layout:**
+   **Xbox Controller Layout (Page-Based Element Selection):**
    - **Left Stick:** Player movement (analog)
-   - **Right Stick:** Target cursor (analog)
-   - **R3 (click):** Jump
-   - **Face Buttons (A/B/X/Y):** Fire/Water/Earth/Nature (quick access)
-   - **D-Pad:** Arcane/Light/Shadow/Lightning (secondary elements)
-   - **RB (Right Bumper):** Cast spell
-   - **LB (Left Bumper):** Remove last element
-   - **RT (Right Trigger):** Aimed cast (hold and release)
-   - **LT (Left Trigger):** Self-cast (buffs)
+   - **Right Stick:** Aim direction (analog)
+   - **A Button:** Jump
+   - **Face Buttons (X/Y/B):** Queue elements from current page (slots 0/1/2)
+   - **LB (Left Bumper):** Queue 4th element from current page (slot 3)
+   - **RB (Right Bumper):** Cast spell (aimed)
+   - **D-Pad Up/Down:** Cycle element pages (3 pages total)
+     - Page 1: Fire, Water, Earth, Nature
+     - Page 2: Lightning, Ice, Arcane, Light
+     - Page 3: Shadow, Nature, Fire, Water
+   - **RT (Right Trigger):** Aimed cast
+   - **LT (Left Trigger):** Self-cast
    - **Back Button:** Clear queue
    - **Start Button:** Quit game
-   - **Rumble Feedback:** Haptic vibration on spell cast
+   - **Rumble Feedback:** Haptic vibration on spell cast and page changes
 
 3. **Property-Based Magic System** ([magic/interaction_engine.py](magic/interaction_engine.py))
    - **Automatic Interaction Engine**: Spell effects computed from element properties, not hard-coded combinations
@@ -160,70 +191,101 @@ This prevents the common isometric movement bug where controls feel "rotated 45�
 ### ✅ Completed Features
 
 **Core Gameplay:**
-- ✅ Isometric rendering with 20x20 diamond grid
+- ✅ Isometric rendering with 20x20 diamond grid (1280x720 window)
 - ✅ Player as 3D cylinder with ground shadow
 - ✅ Camera follow system (player centered, world moves)
 - ✅ Jump mechanics with gravity and Z-axis
 - ✅ Dual-hand keyboard controls (WASD + IJKL)
-- ✅ Independent target/crosshair aiming system
+- ✅ Xbox controller support (analog movement, page-based element selection)
+- ✅ Frame-rate independent movement (dt-based, 200 units/second base speed)
+- ✅ Deathmatch arena with 3 AI bots
+- ✅ 3-second countdown before game start
+- ✅ Q3-style scoreboard with kill tracking
 
 **Property-Based Magic System:**
-- ✅ 4 elements with physical properties (temperature, energy, state, movement, tags)
+- ✅ 9 elements with physical properties (temperature, energy, density, volatility, tags)
 - ✅ Automatic interaction engine - no hard-coded spell combinations
 - ✅ Emergent spell effects from property combinations
+- ✅ Element queueing system (max 5 elements, ordered combinations)
 - ✅ Real-time spell preview UI showing computed damage/area/duration/temperature
-- ✅ Spell casting with SPACE
+- ✅ Multiple spell behaviors: projectile, beam, AOE, heal, shield
 - ✅ Procedural spell naming based on property interactions
+- ✅ Nature element healing with visual feedback (green/cyan +numbers)
+
+**Combat System:**
+- ✅ Projectile system with collision detection
+- ✅ Expanding AOE effects (radial wave expansion at 15 units/sec)
+- ✅ Damage calculation with knockback
+- ✅ Floating damage/heal numbers
+- ✅ Health component with death/respawn (3-second cooldown)
+- ✅ Screen shake and impact effects
+- ✅ Procedural audio (cast/impact/death sounds)
+
+**AI System:**
+- ✅ Bot behavior state machine (attack/flee/wander)
+- ✅ Destination-based fleeing (picks safe spot, not random running)
+- ✅ Preferred combat distance with dead zones (prevents jitter)
+- ✅ Behavior change cooldowns (smooth transitions)
+- ✅ Bots fight each other (not just player)
+- ✅ Spell casting with cooldowns (3.5 seconds)
+
+**Controller Features:**
+- ✅ Page-based element selection (3 pages, 4 elements each)
+- ✅ D-pad page cycling (macOS button events, not hat events)
+- ✅ Visual page indicator with element layout
+- ✅ Rumble feedback on cast and page changes
+- ✅ Analog stick aiming and movement
+- ✅ LT self-cast, RT aimed cast
 
 **Technical Implementation:**
-- ✅ Modular architecture (config, core, magic, entities, rendering modules)
+- ✅ Modular architecture (~5,200 LOC, 17 modules)
 - ✅ Screen-space to cartesian coordinate transformation
 - ✅ Camera offset system for all renderables
-- ✅ Debug interface with coordinate visualization
+- ✅ Debug interface with coordinate visualization, bot position tracing
 - ✅ Event-based logging (not per-frame spam)
 - ✅ Cross-platform quit commands (ESC, Cmd+Q, Ctrl+Q)
-- ✅ Separation of concerns (rendering, game logic, input, magic system)
+- ✅ TAS testing framework (14 verified tests)
+- ✅ Pytest integration (70 tests)
+- ✅ Centralized movement speed (BASE_MOVEMENT_SPEED with multipliers)
 
 **Tuned Parameters:**
-- Player speed: 0.5 (5x base speed for responsive movement)
-- Target speed: 0.3 (slower for precision aiming)
+- Base movement speed: 200 units/second (frame-rate independent)
+- Player health: 300 HP (higher TTK)
+- Projectile speed: 1.2 units/sec (50% slower than original)
+- Projectile damage: 2.5x multiplier
+- AOE expansion: 15 units/sec, 0.8s duration
 - Jump strength: -10 with gravity 0.5
 - Grid bounds: 20x20 cartesian units
+- Bot cast cooldown: 3.5 seconds
+- Bot flee threshold: 30% health
+- Behavior change cooldown: 0.5 seconds
 
-### 🚧 Next Development Phases
-
-**Phase 2: Magic Engine Expansion** (Priority: High)
-- Add new element properties (density, volatility, polarity)
-- Externalize elements to `data/elements.json` (8 elements: Fire, Lightning, Water, Ice, Earth, Nature, Arcane, Light, Shadow)
-- Implement spell behavior system (projectile, beam, AoE, area denial, buff)
-- Element cancellation/amplification (Fire+Water reduces damage, Light+Shadow amplifies)
-- Change toggle system to element queueing (max 5 elements, ordered list)
-
-**Phase 3: Dual-Hand Input Enhancement** (Priority: High)
-- Expand to 8-element keyboard layout (Q/E/R/F + U/O/P/;)
-- Implement Magicka-style element queueing
-- Visual element queue display (5 slots with icons)
-- Spell projectile rendering
-- Enhanced real-time spell preview
-
-**Phase 4: Arena Combat** (Priority: Medium)
-- Health/damage system for entities
-- AI opponent with basic spell casting
-- Spell collision detection
-- Match flow (start → fight → end)
-
-**Phase 5: Minimal Progression** (Priority: Low)
-- XP/level system (arena-focused, no grinding)
-- Small talent tree (15 nodes, unlock mechanics not stats)
-- Element unlocking progression (4 starting → 8 total)
-- Post-match screen with XP gain
+### 🚧 Known Issues & Future Work
 
 **Current Known Issues:**
-- Target movement uses cartesian directions (not screen-space transformed)
-- No collision detection
-- No spell visual effects or projectiles (spells computed but not rendered)
-- Grid boundaries are hard-coded (player can't leave 20x20 area)
-- No enemies or targets to cast spells at
+- Target cursor movement uses cartesian directions (not screen-space transformed like player)
+- Grid boundaries hard-coded (entities can't leave 20x20 area)
+- Bot wander behavior could be smoother (direction interpolation not implemented)
+- No terrain obstacles or collision with environment
+- Controller triggers should still work but unverified after D-pad button fix
+
+**Future Development:**
+- **Polish:**
+  - Spell visual effects (particles, trails)
+  - Arena terrain with obstacles
+  - Victory/defeat conditions and match end screen
+  - Element unlock progression system
+
+- **Gameplay:**
+  - More spell behaviors (channeled beams, area denial, buffs)
+  - Element cancellation/amplification (Fire+Water reduces damage, Light+Shadow amplifies)
+  - Combo system (bonus for specific sequences)
+
+- **Technical:**
+  - Externalize elements to JSON (easier balancing)
+  - Network multiplayer (local or online)
+  - Replay system using TAS framework
+  - Performance optimization for more entities
 
 ### 📝 Design Philosophy
 

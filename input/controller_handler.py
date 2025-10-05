@@ -15,6 +15,8 @@ class ControllerHandler:
         self.controller = None
         self.connected = False
         self.last_trigger_state = {'LT': False, 'RT': False}
+        self.current_element_page = 0  # Current page for element selection
+        self.last_dpad_state = (0, 0)  # Track D-pad for page cycling
 
     def initialize(self):
         """Initialize controller support"""
@@ -46,38 +48,59 @@ class ControllerHandler:
     def process_button_event(self, event, player, target, magic_system):
         """
         Process JOYBUTTONDOWN events.
-        Returns: 'quit' if should exit, None otherwise
+        Returns: 'quit' if should exit, spell_data for casting, None otherwise
         """
         if not self.connected:
             return None
 
         button = event.button
+        print(f"🎮 BUTTON {button} PRESSED")
 
-        # Element queueing (face buttons + D-pad handled separately)
-        if button in ctrl.ELEMENT_MAPPINGS:
-            element = ctrl.ELEMENT_MAPPINGS[button]
+        # Get current element page
+        current_page = ctrl.ELEMENT_PAGES[self.current_element_page]
+
+        # Face buttons X/Y/B queue elements from current page
+        if button == ctrl.BUTTON_X:
+            element = current_page[ctrl.SLOT_X]
             success = magic_system.queue_element(element)
             if success:
-                logging.info(f"Controller: Element {element.upper()} queued")
-                self._rumble_feedback(100)  # Short rumble
+                logging.info(f"Controller X: {element.upper()} queued (Page {self.current_element_page + 1})")
+                self._rumble_feedback(100)
+            return None
+
+        if button == ctrl.BUTTON_Y:
+            element = current_page[ctrl.SLOT_Y]
+            success = magic_system.queue_element(element)
+            if success:
+                logging.info(f"Controller Y: {element.upper()} queued (Page {self.current_element_page + 1})")
+                self._rumble_feedback(100)
+            return None
+
+        if button == ctrl.BUTTON_B:
+            element = current_page[ctrl.SLOT_B]
+            success = magic_system.queue_element(element)
+            if success:
+                logging.info(f"Controller B: {element.upper()} queued (Page {self.current_element_page + 1})")
+                self._rumble_feedback(100)
+            return None
+
+        if button == ctrl.BUTTON_LB:
+            # LB queues 4th element from current page
+            element = current_page[ctrl.SLOT_LB]
+            success = magic_system.queue_element(element)
+            if success:
+                logging.info(f"Controller LB: {element.upper()} queued (Page {self.current_element_page + 1})")
+                self._rumble_feedback(100)
             return None
 
         # Actions
         if button == ctrl.ACTION_CAST:
             # Right Bumper - Cast spell
-            spell_data = magic_system.cast_spell()
+            spell_data = magic_system.cast_spell(player.mana)
             if spell_data:
-                logging.info(f"Controller CAST: {spell_data['name']}")
+                logging.info(f"Controller RB CAST: {spell_data['name']}")
                 self._rumble_feedback(ctrl.RUMBLE_DURATION)
-                return spell_data  # Return for visual effects
-            return None
-
-        if button == ctrl.ACTION_REMOVE:
-            # Left Bumper - Remove last element
-            if magic_system.element_queue:
-                removed = magic_system.element_queue[-1]
-                magic_system.remove_last_element()
-                logging.info(f"Controller: Removed {removed.upper()}")
+                return spell_data
             return None
 
         if button == ctrl.ACTION_CLEAR:
@@ -87,8 +110,9 @@ class ControllerHandler:
             return None
 
         if button == ctrl.ACTION_JUMP:
-            # Right stick click - Jump
+            # A button - Jump
             player.jump()
+            logging.info("Controller A: JUMP")
             return None
 
         if button == ctrl.BUTTON_START:
@@ -96,25 +120,60 @@ class ControllerHandler:
             logging.info("Controller: Quit via START button")
             return 'quit'
 
+        # D-Pad page cycling (D-pad sends button events on macOS)
+        if button == ctrl.DPAD_UP:
+            old_page = self.current_element_page
+            self.current_element_page = (self.current_element_page + 1) % len(ctrl.ELEMENT_PAGES)
+            current_page = ctrl.ELEMENT_PAGES[self.current_element_page]
+            print(f"🔼 D-PAD UP: PAGE {old_page + 1} ➡️  PAGE {self.current_element_page + 1}/3")
+            print(f"   📋 Elements: {current_page}")
+            self._rumble_feedback(200)
+            return None
+
+        if button == ctrl.DPAD_DOWN:
+            old_page = self.current_element_page
+            self.current_element_page = (self.current_element_page - 1) % len(ctrl.ELEMENT_PAGES)
+            current_page = ctrl.ELEMENT_PAGES[self.current_element_page]
+            print(f"🔽 D-PAD DOWN: PAGE {old_page + 1} ➡️  PAGE {self.current_element_page + 1}/3")
+            print(f"   📋 Elements: {current_page}")
+            self._rumble_feedback(200)
+            return None
+
         return None
 
     def process_hat_event(self, event, magic_system):
-        """Process D-pad (hat) events for element selection"""
+        """Process D-pad (hat) events for page cycling"""
+        print(f"🎮 D-PAD EVENT RECEIVED! Value: {event.value}, Connected: {self.connected}")
+
         if not self.connected:
+            print("⚠️  Controller not connected, ignoring D-pad")
             return None
 
         hat_value = event.value
 
-        # Check if hat direction maps to an element
-        if hat_value in ctrl.ELEMENT_MAPPINGS:
-            element = ctrl.ELEMENT_MAPPINGS[hat_value]
-            success = magic_system.queue_element(element)
-            if success:
-                logging.info(f"Controller D-Pad: Element {element.upper()} queued")
-                self._rumble_feedback(100)
+        # D-pad Up (0, 1) - Next page
+        if hat_value == (0, 1):
+            old_page = self.current_element_page
+            self.current_element_page = (self.current_element_page + 1) % len(ctrl.ELEMENT_PAGES)
+            current_page = ctrl.ELEMENT_PAGES[self.current_element_page]
+            print(f"🔼 D-PAD UP: PAGE {old_page + 1} ➡️  PAGE {self.current_element_page + 1}/3")
+            print(f"   📋 New elements: {current_page}")
+            self._rumble_feedback(200)
+
+        # D-pad Down (0, -1) - Previous page
+        elif hat_value == (0, -1):
+            old_page = self.current_element_page
+            self.current_element_page = (self.current_element_page - 1) % len(ctrl.ELEMENT_PAGES)
+            current_page = ctrl.ELEMENT_PAGES[self.current_element_page]
+            print(f"🔽 D-PAD DOWN: PAGE {old_page + 1} ➡️  PAGE {self.current_element_page + 1}/3")
+            print(f"   📋 New elements: {current_page}")
+            self._rumble_feedback(200)
+        else:
+            print(f"↔️  D-PAD OTHER: {hat_value}")
+
         return None
 
-    def process_analog_movement(self, player, target):
+    def process_analog_movement(self, player, target, dt=0.016):
         """
         Process analog stick input for continuous movement.
         Left stick = player, Right stick = target cursor.
@@ -137,7 +196,7 @@ class ControllerHandler:
         player_dy = left_y  # Positive = down in pygame
 
         # Move player
-        player.move(player_dx, player_dy)
+        player.move(player_dx, player_dy, dt)
 
         # Right stick - Aim direction OR free aim (depending on mode)
         right_x = self.controller.get_axis(ctrl.AXIS_RIGHT_X)
@@ -160,11 +219,11 @@ class ControllerHandler:
         else:
             pass  # Let keyboard handle targeting
 
-    def check_trigger_casting(self, magic_system):
+    def check_trigger_casting(self, magic_system, player):
         """
         Check trigger states for spell casting.
         RT = aimed cast, LT = self-cast.
-        Returns spell_data dict if cast, None otherwise.
+        Returns tuple: (cast_type, spell_data) or None
         """
         if not self.connected or not ctrl.ENABLE_TRIGGER_CASTING:
             return None
@@ -175,9 +234,9 @@ class ControllerHandler:
 
         # Detect rising edge (trigger just pressed)
         if rt_pressed and not self.last_trigger_state['RT']:
-            spell_data = magic_system.cast_spell()
+            spell_data = magic_system.cast_spell(player.mana)
             if spell_data:
-                logging.info(f"Controller RT CAST: {spell_data['name']}")
+                logging.info(f"Controller RT CAST: {spell_data['name']} (aimed)")
                 self._rumble_feedback(ctrl.RUMBLE_DURATION)
                 self.last_trigger_state['RT'] = True
                 return ('aimed', spell_data)
@@ -190,9 +249,9 @@ class ControllerHandler:
         lt_pressed = lt_value > ctrl.TRIGGER_THRESHOLD
 
         if lt_pressed and not self.last_trigger_state['LT']:
-            spell_data = magic_system.cast_spell()
+            spell_data = magic_system.cast_spell(player.mana)
             if spell_data:
-                logging.info(f"Controller LT SELF-CAST: {spell_data['name']}")
+                logging.info(f"Controller LT CAST: {spell_data['name']} (self-cast)")
                 self._rumble_feedback(ctrl.RUMBLE_DURATION)
                 self.last_trigger_state['LT'] = True
                 return ('self', spell_data)

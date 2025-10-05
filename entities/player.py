@@ -2,23 +2,33 @@
 
 import pygame
 import logging
-from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
-from config.colors import WHITE
+from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, BASE_MOVEMENT_SPEED
+from config.colors import WHITE, GREEN, GRAY, BLUE, CYAN
 from rendering.isometric import cart_to_iso, screen_to_cart
+from components.health import Health
+from components.mana import Mana
 
 
 class Player:
     def __init__(self, x, y):
         self.cart_x = x  # Cartesian X
         self.cart_y = y  # Cartesian Y
+        self.spawn_x = x  # Respawn position
+        self.spawn_y = y
         self.z = 0  # Height above ground
         self.size = 20
-        self.speed = 1
+        self.base_speed = BASE_MOVEMENT_SPEED  # Use centralized base speed
+        self.speed_multiplier = 1.0  # For effects that modify speed (buffs/debuffs)
         self.color = WHITE
         self.is_jumping = False
         self.jump_velocity = 0
         self.gravity = 0.5
         self.jump_strength = -10
+
+        # Health and Mana components
+        self.health = Health(max_health=300)  # Higher health for longer fights
+        self.mana = Mana(max_mana=100, regen_rate=15.0)  # 15 mana/second regen
+        self.collision_radius = 0.5  # For collision with projectiles
 
         # Facing direction (for forward-facing targeting)
         self.facing_direction = (1, 0)  # Default facing right
@@ -28,7 +38,7 @@ class Player:
         self.last_cart_delta = (0, 0)
         self.last_logged_input = (0, 0)  # Track last logged input to avoid spam
 
-    def move(self, screen_dx, screen_dy):
+    def move(self, screen_dx, screen_dy, dt=0.016):
         """Move using screen-space directions (perspective coordinates)"""
         # Store input for debug
         self.last_input = (screen_dx, screen_dy)
@@ -36,8 +46,11 @@ class Player:
         # Convert screen direction to cartesian movement
         cart_dx, cart_dy = screen_to_cart(screen_dx, screen_dy)
 
+        # Calculate effective speed (base * multiplier * dt for frame-rate independence)
+        effective_speed = self.base_speed * self.speed_multiplier * dt
+
         # Store cartesian delta for debug
-        self.last_cart_delta = (cart_dx * self.speed, cart_dy * self.speed)
+        self.last_cart_delta = (cart_dx * effective_speed, cart_dy * effective_speed)
 
         # Log only on input CHANGE (not every frame)
         if (screen_dx, screen_dy) != self.last_logged_input:
@@ -48,8 +61,8 @@ class Player:
             self.last_logged_input = (screen_dx, screen_dy)
 
         # Move in cartesian space
-        self.cart_x += cart_dx * self.speed
-        self.cart_y += cart_dy * self.speed
+        self.cart_x += cart_dx * effective_speed
+        self.cart_y += cart_dy * effective_speed
 
         # Update facing direction when moving
         if cart_dx != 0 or cart_dy != 0:
@@ -59,14 +72,19 @@ class Player:
                 self.facing_direction = (cart_dx / magnitude, cart_dy / magnitude)
 
         # Keep player in bounds
-        self.cart_x = max(0, min(20, self.cart_x))
-        self.cart_y = max(0, min(20, self.cart_y))
+        self.cart_x = max(0, min(GRID_SIZE, self.cart_x))
+        self.cart_y = max(0, min(GRID_SIZE, self.cart_y))
 
     def jump(self):
         if not self.is_jumping:
             self.is_jumping = True
             self.jump_velocity = self.jump_strength
             logging.info(f"JUMP at position ({self.cart_x:.2f}, {self.cart_y:.2f})")
+
+    def update(self, dt):
+        """Update player state"""
+        self.health.update(dt)
+        self.mana.update(dt)  # Regenerate mana
 
     def update_jump(self):
         if self.is_jumping:
@@ -78,6 +96,17 @@ class Player:
                 self.z = 0
                 self.is_jumping = False
                 self.jump_velocity = 0
+
+    def respawn(self):
+        """Respawn player at spawn point"""
+        self.cart_x = self.spawn_x
+        self.cart_y = self.spawn_y
+        self.z = 0
+        self.is_jumping = False
+        self.jump_velocity = 0
+        self.health.respawn()
+        self.mana.current_mana = self.mana.max_mana  # Full mana on respawn
+        logging.info(f"Player respawned at ({self.spawn_x}, {self.spawn_y})")
 
     def draw(self, screen, camera_offset_x=0, camera_offset_y=0):
         # Convert to isometric coordinates
@@ -104,3 +133,46 @@ class Player:
         # Bottom ellipse of cylinder (darker for depth)
         bottom_color = tuple(max(0, c - 50) for c in self.color)
         pygame.draw.ellipse(screen, bottom_color, (screen_x - cylinder_width//2, screen_y - 7, cylinder_width, 14))
+
+        # Draw health and mana bars above player
+        if self.health.is_alive:
+            self._draw_health_bar(screen, screen_x, top_y - 20)
+            self._draw_mana_bar(screen, screen_x, top_y - 12)
+
+    def _draw_health_bar(self, screen, x, y):
+        """Draw health bar above player"""
+        bar_width = 50
+        bar_height = 6
+        health_pct = self.health.get_health_percentage()
+
+        # Background (gray)
+        bg_rect = pygame.Rect(int(x - bar_width // 2), int(y), bar_width, bar_height)
+        pygame.draw.rect(screen, GRAY, bg_rect)
+
+        # Health (green)
+        health_width = int(bar_width * health_pct)
+        if health_width > 0:
+            health_rect = pygame.Rect(int(x - bar_width // 2), int(y), health_width, bar_height)
+            pygame.draw.rect(screen, GREEN, health_rect)
+
+        # Border
+        pygame.draw.rect(screen, WHITE, bg_rect, 1)
+
+    def _draw_mana_bar(self, screen, x, y):
+        """Draw mana bar above player"""
+        bar_width = 50
+        bar_height = 5
+        mana_pct = self.mana.get_mana_percentage()
+
+        # Background (gray)
+        bg_rect = pygame.Rect(int(x - bar_width // 2), int(y), bar_width, bar_height)
+        pygame.draw.rect(screen, GRAY, bg_rect)
+
+        # Mana (blue/cyan)
+        mana_width = int(bar_width * mana_pct)
+        if mana_width > 0:
+            mana_rect = pygame.Rect(int(x - bar_width // 2), int(y), mana_width, bar_height)
+            pygame.draw.rect(screen, CYAN, mana_rect)
+
+        # Border
+        pygame.draw.rect(screen, WHITE, bg_rect, 1)

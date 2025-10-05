@@ -67,60 +67,66 @@ def draw_controller_status(screen, font, input_manager, x=10, y=550):
         screen.blit(text, (col3_x, y + y_offset + i * 18))
 
 
-def draw_controller_element_hints(screen, font, magic_system, x=700, y=100):
+def draw_controller_element_hints(screen, font, input_manager, x=620, y=50):
     """
-    Show active controller element mappings.
-    Displays face button layout with element icons.
+    Show current element page and button assignments.
+    Displays which elements are mapped to X/Y/B/LB buttons.
     """
-    # Don't draw if no elements available
-    if not magic_system.unlocked_elements:
+    # Only show if controller connected
+    if not input_manager.controller.connected:
         return
 
-    # Background
-    size = 100
-    panel = pygame.Surface((size, size))
-    panel.set_alpha(150)
-    panel.fill((30, 30, 30))
+    # Get current page
+    current_page_idx = input_manager.controller.current_element_page
+    current_page = ctrl.ELEMENT_PAGES[current_page_idx]
+
+    # Background panel
+    panel_width = 260
+    panel_height = 140
+    panel = pygame.Surface((panel_width, panel_height))
+    panel.set_alpha(200)
+    panel.fill((20, 20, 30))
     screen.blit(panel, (x, y))
+    pygame.draw.rect(screen, WHITE, (x, y, panel_width, panel_height), 2)
 
-    # Title
-    small_font = pygame.font.Font(None, 18)
-    title = small_font.render("Face Buttons", True, WHITE)
-    screen.blit(title, (x + 10, y + 5))
+    # Title with page indicator
+    title_font = pygame.font.Font(None, 28)
+    title = title_font.render(f"ELEMENT PAGE {current_page_idx + 1}/3", True, WHITE)
+    screen.blit(title, (x + 10, y + 8))
 
-    # Button layout (diamond shape like Xbox controller)
-    #       Y (top)
-    #   X       B (right)
-    #       A (bottom)
+    # Page navigation hint
+    hint_font = pygame.font.Font(None, 18)
+    nav_hint = hint_font.render("D-Pad Up/Down to change", True, GRAY)
+    screen.blit(nav_hint, (x + 10, y + 32))
 
-    center_x = x + size // 2
-    center_y = y + size // 2 + 10
-    button_radius = 12
-    offset = 25
+    # Button assignments (diamond layout)
+    small_font = pygame.font.Font(None, 20)
+    center_x = x + panel_width // 2
+    center_y = y + 90
+    button_radius = 15
+    offset = 35
 
-    # Get element names
-    button_elements = {
-        'A': ctrl.ELEMENT_MAPPINGS.get(ctrl.BUTTON_A, '?'),
-        'B': ctrl.ELEMENT_MAPPINGS.get(ctrl.BUTTON_B, '?'),
-        'X': ctrl.ELEMENT_MAPPINGS.get(ctrl.BUTTON_X, '?'),
-        'Y': ctrl.ELEMENT_MAPPINGS.get(ctrl.BUTTON_Y, '?'),
-    }
-
-    # Draw buttons in diamond layout
-    buttons = [
-        ('Y', center_x, center_y - offset, (255, 200, 0)),  # Yellow - Top
-        ('B', center_x + offset, center_y, (255, 50, 50)),  # Red - Right
-        ('A', center_x, center_y + offset, (50, 255, 50)),  # Green - Bottom
-        ('X', center_x - offset, center_y, (100, 150, 255)),  # Blue - Left
+    # Map buttons to element slots
+    button_layout = [
+        ('Y', ctrl.SLOT_Y, center_x, center_y - offset, (255, 220, 0)),  # Yellow - Top
+        ('B', ctrl.SLOT_B, center_x + offset, center_y, (220, 50, 50)),  # Red - Right
+        ('A', ctrl.ACTION_JUMP, center_x, center_y + offset, (50, 220, 50)),  # Green - Bottom (JUMP)
+        ('X', ctrl.SLOT_X, center_x - offset, center_y, (80, 150, 255)),  # Blue - Left
+        ('LB', ctrl.SLOT_LB, center_x - offset * 2, center_y - offset // 2, (180, 180, 180)),  # Gray - Far Left
     ]
 
-    for label, bx, by, color in buttons:
+    for label, slot_idx, bx, by, color in button_layout:
         # Draw button circle
         pygame.draw.circle(screen, color, (int(bx), int(by)), button_radius)
-        pygame.draw.circle(screen, WHITE, (int(bx), int(by)), button_radius, 2)
+        pygame.draw.circle(screen, WHITE, (int(bx), int(by)), button_radius, 1)
 
-        # Draw element name below
-        elem = button_elements.get(label, '?')
-        elem_text = small_font.render(elem[:3].upper(), True, WHITE)
+        # Get element for this button
+        if label == 'A':
+            # A button is jump
+            elem_text = small_font.render("JUMP", True, (0, 0, 0))
+        else:
+            element_name = current_page[slot_idx]
+            elem_text = small_font.render(element_name[:3].upper(), True, (0, 0, 0))
+
         text_rect = elem_text.get_rect(center=(int(bx), int(by)))
         screen.blit(elem_text, text_rect)

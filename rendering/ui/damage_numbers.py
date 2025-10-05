@@ -2,18 +2,19 @@
 
 import pygame
 from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
-from config.colors import WHITE, YELLOW, ORANGE, RED
+from config.colors import WHITE, YELLOW, ORANGE, RED, GREEN, CYAN
 from rendering.isometric import cart_to_iso
 
 
 class DamageNumber:
     """A single floating damage number"""
 
-    def __init__(self, damage, cart_x, cart_y):
+    def __init__(self, damage, cart_x, cart_y, is_heal=False):
         self.damage = int(damage)
         self.cart_x = cart_x
         self.cart_y = cart_y
         self.z_offset = 0.0  # Start at entity height
+        self.is_heal = is_heal
 
         # Animation
         self.lifetime = 1.0  # 1 second
@@ -26,15 +27,23 @@ class DamageNumber:
         self.color = self._get_color()
 
     def _get_color(self):
-        """Color based on damage amount"""
-        if self.damage >= 50:
-            return RED  # Critical damage
-        elif self.damage >= 25:
-            return ORANGE  # Heavy damage
-        elif self.damage >= 10:
-            return YELLOW  # Medium damage
+        """Color based on damage/heal amount"""
+        if self.is_heal:
+            # Healing numbers are green/cyan
+            if self.damage >= 50:
+                return CYAN  # Big heal
+            else:
+                return GREEN  # Normal heal
         else:
-            return WHITE  # Light damage
+            # Damage numbers
+            if self.damage >= 50:
+                return RED  # Critical damage
+            elif self.damage >= 25:
+                return ORANGE  # Heavy damage
+            elif self.damage >= 10:
+                return YELLOW  # Medium damage
+            else:
+                return WHITE  # Light damage
 
     def update(self, dt):
         """Update animation"""
@@ -61,8 +70,9 @@ class DamageNumber:
         # Apply Z offset (floats upward)
         screen_y -= int(self.z_offset * 20)  # Convert to pixels
 
-        # Render text with alpha
-        text_surface = self.font.render(str(self.damage), True, self.color)
+        # Render text with alpha (add + for heals)
+        text = f"+{self.damage}" if self.is_heal else str(self.damage)
+        text_surface = self.font.render(text, True, self.color)
         text_surface.set_alpha(alpha)
 
         # Center text on position
@@ -76,9 +86,9 @@ class DamageNumberManager:
     def __init__(self):
         self.numbers = []
 
-    def spawn(self, damage, cart_x, cart_y):
+    def spawn(self, damage, cart_x, cart_y, is_heal=False):
         """Spawn a new damage number at position"""
-        number = DamageNumber(damage, cart_x, cart_y)
+        number = DamageNumber(damage, cart_x, cart_y, is_heal)
         self.numbers.append(number)
 
     def update(self, dt):

@@ -2,7 +2,7 @@
 
 import pygame
 import logging
-from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
+from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE
 from config.colors import RED, WHITE, GREEN, GRAY
 from rendering.isometric import cart_to_iso
 from components.health import Health
@@ -24,6 +24,8 @@ class Enemy:
         """
         self.cart_x = x
         self.cart_y = y
+        self.spawn_x = x  # Respawn position
+        self.spawn_y = y
         self.size = 15
         self.color = RED
         self.collision_radius = 0.5  # Cartesian units
@@ -39,6 +41,8 @@ class Enemy:
         self.alive = True
         self.death_timer = 0.0
         self.death_duration = 0.5  # Fade out over 0.5 seconds
+        self.respawn_timer = 0.0
+        self.respawn_delay = 3.0  # Respawn after 3 seconds
         self.alpha = 255  # For fade-out effect
 
         # Knockback physics
@@ -90,19 +94,38 @@ class Enemy:
                 self.knockback_velocity_y = min(0, self.knockback_velocity_y + friction)
 
             # Keep in bounds
-            self.cart_x = max(0, min(20, self.cart_x))
-            self.cart_y = max(0, min(20, self.cart_y))
+            self.cart_x = max(0, min(GRID_SIZE, self.cart_x))
+            self.cart_y = max(0, min(GRID_SIZE, self.cart_y))
 
-        # Death animation
+        # Death animation and respawn
         if not self.health.is_alive:
             self.death_timer += dt
             # Fade out
             fade_progress = min(1.0, self.death_timer / self.death_duration)
             self.alpha = int(255 * (1.0 - fade_progress))
 
+            # Start respawn timer after fade completes
+            if self.death_timer >= self.death_duration:
+                self.respawn_timer += dt
+                if self.respawn_timer >= self.respawn_delay:
+                    self.respawn()
+
     def should_remove(self):
-        """Check if enemy should be removed from game (after death animation)"""
-        return not self.health.is_alive and self.death_timer >= self.death_duration
+        """Check if enemy should be removed from game (never - they respawn now)"""
+        return False  # Enemies respawn instead of being removed
+
+    def respawn(self):
+        """Respawn enemy at spawn point"""
+        self.cart_x = self.spawn_x
+        self.cart_y = self.spawn_y
+        self.death_timer = 0.0
+        self.respawn_timer = 0.0
+        self.alpha = 255
+        self.alive = True
+        self.knockback_velocity_x = 0.0
+        self.knockback_velocity_y = 0.0
+        self.health.respawn()
+        logging.info(f"Enemy respawned at ({self.spawn_x}, {self.spawn_y})")
 
     def draw(self, screen, camera_offset_x=0, camera_offset_y=0):
         """Draw enemy"""

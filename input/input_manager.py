@@ -69,7 +69,7 @@ class InputManager:
             is_self_cast = mods & pygame.KMOD_SHIFT
 
             if is_self_cast:
-                spell_data = magic_system.cast_spell()
+                spell_data = magic_system.cast_spell(player.mana)
                 if spell_data:
                     logging.info(f"SELF-CAST: {spell_data['name']} (behavior: {spell_data['behavior']})")
                     # Spawn visual effect at player position (Phase 4)
@@ -82,7 +82,7 @@ class InputManager:
                 else:
                     logging.info("SELF-CAST failed: no elements queued")
             else:
-                spell_data = magic_system.cast_spell()
+                spell_data = magic_system.cast_spell(player.mana)
                 if spell_data:
                     target_pos = (target.cart_x, target.cart_y)
                     logging.info(f"AIMED CAST: {spell_data['name']} at {target_pos} (behavior: {spell_data['behavior']})")
@@ -118,7 +118,7 @@ class InputManager:
         """Process controller D-pad (hat) events"""
         return self.controller.process_hat_event(event, magic_system)
 
-    def process_continuous_movement(self, keys, player, target, magic_system=None, effect_manager=None):
+    def process_continuous_movement(self, keys, player, target, magic_system=None, effect_manager=None, dt=0.016):
         """Process held keys and analog sticks for continuous movement"""
         # === KEYBOARD MOVEMENT (WASD) ===
         dx = dy = 0
@@ -130,7 +130,7 @@ class InputManager:
             dx = -1
         if keys[keybinds.MOVE_RIGHT]:
             dx = 1
-        player.move(dx, dy)
+        player.move(dx, dy, dt)
         player.update_jump()
 
         # === TARGET AIMING (IJKL) - Diablo 3 Style ===
@@ -156,11 +156,11 @@ class InputManager:
 
         # === CONTROLLER ANALOG STICKS ===
         if self.controller.connected:
-            self.controller.process_analog_movement(player, target)
+            self.controller.process_analog_movement(player, target, dt)
 
             # Check trigger casting
             if magic_system and effect_manager:
-                cast_result = self.controller.check_trigger_casting(magic_system)
+                cast_result = self.controller.check_trigger_casting(magic_system, player)
                 if cast_result:
                     cast_type, spell_data = cast_result
                     if cast_type == 'aimed':

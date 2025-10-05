@@ -2,7 +2,7 @@
 
 import pygame
 import math
-from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
+from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE
 from config.colors import YELLOW, ORANGE, RED
 from rendering.isometric import cart_to_iso
 from config import controller_config as ctrl
@@ -97,8 +97,8 @@ class Target:
         self.cart_y = player.cart_y + self.aim_direction[1] * self.aim_distance
 
         # Keep in bounds
-        self.cart_x = max(0, min(20, self.cart_x))
-        self.cart_y = max(0, min(20, self.cart_y))
+        self.cart_x = max(0, min(GRID_SIZE, self.cart_x))
+        self.cart_y = max(0, min(GRID_SIZE, self.cart_y))
 
     def draw(self, screen, camera_offset_x=0, camera_offset_y=0):
         if self.visible:

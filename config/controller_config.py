@@ -47,44 +47,51 @@ STICK_DEADZONE = 0.15
 # Trigger threshold (when to consider trigger "pressed")
 TRIGGER_THRESHOLD = 0.5
 
-# Element mappings to buttons
-# Philosophy: Quick access to all 9 elements
+# NEW ELEMENT SYSTEM:
+# - Face buttons X/Y/B are SLOTS that queue elements
+# - A button is JUMP
+# - D-pad CYCLES which element set is assigned to X/Y/B slots
+# - LB selects the 4th element in current set
 #
-# FACE BUTTONS (Primary):        D-PAD (Advanced):
-#        Y (Nature 🌿)                D-Up (Arcane 🔮)
-#        |                                |
-# X (Earth 🌍) - B (Water 💧)    D-Left (Light ✨) - D-Right (Lightning ⚡)
-#        |                                |
-#     A (Fire 🔥)                    D-Down (Shadow 🌑)
+# D-Pad Up/Down cycles between element pages:
+#   Page 1: Fire, Water, Earth, Nature
+#   Page 2: Lightning, Ice, Arcane, Light
+#   Page 3: Shadow, Fire, Water, Earth (wraps)
 #
-# LB = Ice ❄️
+# Example: D-Up switches to Page 2
+#   X = Lightning, Y = Ice, B = Arcane, LB = Light
 #
-ELEMENT_MAPPINGS = {
-    # Face buttons (primary elements - easy thumb access)
-    BUTTON_A: 'fire',      # A (bottom) - Fire 🔥
-    BUTTON_B: 'water',     # B (right) - Water 💧
-    BUTTON_X: 'earth',     # X (left) - Earth 🌍
-    BUTTON_Y: 'nature',    # Y (top) - Nature 🌿
 
-    # D-Pad (advanced elements - requires thumb movement)
-    HAT_UP: 'arcane',      # D-Up - Arcane 🔮
-    HAT_RIGHT: 'lightning', # D-Right - Lightning ⚡
-    HAT_DOWN: 'shadow',    # D-Down - Shadow 🌑
-    HAT_LEFT: 'light',     # D-Left - Light ✨
+# D-Pad buttons (on macOS, D-pad sends button events, not hat events)
+DPAD_UP = 11      # D-pad Up
+DPAD_DOWN = 12    # D-pad Down
+DPAD_LEFT = 13    # D-pad Left
+DPAD_RIGHT = 14   # D-pad Right
 
-    # Bumpers
-    BUTTON_LB: 'ice',      # Left Bumper - Ice ❄️
-}
+# Element pages (4 elements per page for X/Y/B/LB)
+ELEMENT_PAGES = [
+    ['fire', 'water', 'earth', 'nature'],       # Page 0 (default)
+    ['lightning', 'ice', 'arcane', 'light'],    # Page 1
+    ['shadow', 'nature', 'fire', 'water'],      # Page 2
+]
+
+# Face button slot indices (map to element page indices)
+SLOT_X = 0      # X button = slot 0
+SLOT_Y = 1      # Y button = slot 1
+SLOT_B = 2      # B button = slot 2
+SLOT_LB = 3     # LB button = slot 3
+
+# Legacy mappings (kept for compatibility, but overridden by page system)
+ELEMENT_MAPPINGS = {}
 
 # Action mappings
-ACTION_CAST = BUTTON_RB        # Right Bumper - Cast spell
-ACTION_REMOVE = BUTTON_L3      # Left stick click - Remove last element
+ACTION_CAST = BUTTON_RB        # Right Bumper - Cast spell (aimed)
 ACTION_CLEAR = BUTTON_BACK     # Back button - Clear queue
-ACTION_JUMP = BUTTON_R3        # Right stick click - Jump
+ACTION_JUMP = BUTTON_A         # A button - Jump
 
-# Alternative: Triggers for casting
-ACTION_CAST_TRIGGER = AXIS_RT  # Right Trigger can also cast
-ACTION_SELFCAST_TRIGGER = AXIS_LT  # Left Trigger for self-cast
+# Trigger casting modes
+ACTION_CAST_TRIGGER = AXIS_RT  # Right Trigger - Aimed cast
+ACTION_SELFCAST_TRIGGER = AXIS_LT  # Left Trigger - Self-cast
 
 # Settings
 ENABLE_TRIGGER_CASTING = True  # Allow RT to cast spells

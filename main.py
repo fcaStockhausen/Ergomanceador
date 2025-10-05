@@ -161,6 +161,10 @@ def main():
         elif current_mode == 'game' and game:
             # Game needs its own clock ticked for dt calculation
             game.clock.tick()
+
+            # Handle continuous input (held keys for movement)
+            game.handle_continuous_input(dt)
+
             game.update()
         elif current_mode == 'designer' and designer_mode:
             designer_mode.update(dt)

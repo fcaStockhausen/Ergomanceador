@@ -69,10 +69,10 @@ class Projectile:
             self.alive = False
             return
 
-        # Move projectile
+        # Move projectile (frame-rate independent)
         if self.behavior == 'projectile' or self.behavior == 'homing' or self.behavior == 'split':
-            self.cart_x += self.vel_x
-            self.cart_y += self.vel_y
+            self.cart_x += self.vel_x * dt
+            self.cart_y += self.vel_y * dt
 
             # Check if reached target (within 0.5 units)
             dx = self.target_x - self.cart_x

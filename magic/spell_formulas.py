@@ -258,14 +258,15 @@ class SpellFormulas:
             },
             'speed': {
                 'behavior_base_speed': {
-                    'projectile': 1.0,
+                    'projectile': 8.0,     # Slower for better visibility (units/sec)
                     'beam': 99.0,          # Beams are instant
                     'aoe': 0.5,            # AOE expansion speed
                     'area_denial': 0.0,    # Area denial doesn't move
                     'buff': 0.0,
                     'heal': 0.0,
-                    'homing': 0.8,         # Slightly slower but tracks
-                    'chain': 1.5           # Fast jumps
+                    'homing': 6.0,         # Slightly slower but tracks
+                    'chain': 10.0,         # Fast jumps
+                    'split': 8.0           # Same as projectile
                 },
                 'density_multiplier': 2.0,
                 'energy_factor': 0.5,

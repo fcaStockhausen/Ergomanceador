@@ -28,7 +28,7 @@ class Player:
 
         # Health and Mana components
         self.health = Health(max_health=300)  # Higher health for longer fights
-        self.mana = Mana(max_mana=100, regen_rate=15.0)  # 15 mana/second regen
+        self.mana = Mana(max_mana=200, regen_rate=15.0)  # Doubled for 6-element queue support
         self.collision_radius = 0.5  # For collision with projectiles
 
         # Shield component (created when shield spell is cast)

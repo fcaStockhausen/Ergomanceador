@@ -261,7 +261,7 @@ This prevents the common isometric movement bug where controls feel "rotated 45�
 - ✅ Emergent spell effects from property combinations
 - ✅ Element queueing system (max 6 elements, ordered combinations - supports keyboard chords)
 - ✅ Real-time spell preview UI showing computed damage/area/duration/temperature
-- ✅ Multiple spell behaviors: projectile, beam, AOE, heal, shield
+- ✅ Multiple spell behaviors: projectile, beam, AOE, heal, buff, homing, chain, split (9 total)
 - ✅ Procedural spell naming based on property interactions
 - ✅ Nature element healing with visual feedback (green/cyan +numbers)
 - ✅ 12D property vector space with manifold classification
@@ -270,6 +270,8 @@ This prevents the common isometric movement bug where controls feel "rotated 45�
 
 **Combat System:**
 - ✅ Projectile system with collision detection
+- ✅ Split projectile behavior (emergent: 1-5 children based on chaos/volatility/phase_diversity)
+- ✅ Chain lightning (Quake 1 style zigzag beams, up to 3 targets, 70% falloff)
 - ✅ Expanding AOE effects (radial wave expansion at 15 units/sec)
 - ✅ Damage calculation with knockback
 - ✅ Floating damage/heal numbers

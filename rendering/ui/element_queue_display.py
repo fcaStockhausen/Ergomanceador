@@ -4,22 +4,37 @@ import pygame
 from config.colors import ELEMENT_COLORS
 from config.keybinds import ELEMENT_KEY_NAMES
 from magic.element_loader import load_elements_from_json
+from utils.emoji_font import get_emoji_font, render_emoji_with_fallback, get_element_fallback
 
 
 # Load element data for icons
 _elements_data = load_elements_from_json()
 
+# Global emoji fonts (initialized once)
+_emoji_font = None
+_emoji_font_large = None
+
+
+def _get_emoji_fonts():
+    """Get or initialize emoji fonts"""
+    global _emoji_font, _emoji_font_large
+    if _emoji_font is None:
+        _emoji_font = get_emoji_font(24)
+        _emoji_font_large = get_emoji_font(32)
+    return _emoji_font, _emoji_font_large
+
 
 def draw_element_queue(screen, font, magic_system, x=10, y=220):
     """
     Draw element queue with visual icons and colors.
-    Shows up to 5 elements in queue with emoji icons.
+    Shows up to 6 elements in queue with emoji icons (or fallback text).
     """
-    queue_font = pygame.font.Font(None, 28)
+    # Get emoji fonts
+    emoji_font, emoji_font_large = _get_emoji_fonts()
     label_font = pygame.font.Font(None, 22)
 
     # Draw label
-    label = label_font.render("Element Queue (max 5):", True, (200, 200, 200))
+    label = label_font.render(f"Element Queue (max {magic_system.max_queue_size}):", True, (200, 200, 200))
     screen.blit(label, (x, y))
 
     # Draw queue slots (5 slots)
@@ -39,10 +54,18 @@ def draw_element_queue(screen, font, magic_system, x=10, y=220):
             pygame.draw.rect(screen, color, (slot_x, slot_y, slot_width, slot_height))
             pygame.draw.rect(screen, (255, 255, 255), (slot_x, slot_y, slot_width, slot_height), 2)
 
-            # Draw element icon (emoji)
+            # Draw element icon (emoji with fallback)
             if element_name in _elements_data:
                 icon = _elements_data[element_name].icon
-                icon_surface = queue_font.render(icon, True, (255, 255, 255))
+                fallback = get_element_fallback(icon)
+
+                # Use emoji font with fallback
+                icon_surface = render_emoji_with_fallback(
+                    emoji_font_large,
+                    icon,
+                    (255, 255, 255),
+                    fallback
+                )
                 icon_rect = icon_surface.get_rect(center=(slot_x + slot_width//2, slot_y + slot_height//2 - 5))
                 screen.blit(icon_surface, icon_rect)
 
@@ -72,8 +95,9 @@ def draw_available_elements(screen, font, magic_system, x=400, y=10):
     Draw all available (unlocked) elements with their keybinds.
     Shows which elements the player can currently use.
     """
+    # Get emoji fonts
+    emoji_font, _ = _get_emoji_fonts()
     label_font = pygame.font.Font(None, 22)
-    element_font = pygame.font.Font(None, 24)
 
     # Title
     title = label_font.render("Available Elements:", True, (200, 200, 200))
@@ -100,9 +124,15 @@ def draw_available_elements(screen, font, magic_system, x=400, y=10):
         if element in _elements_data:
             icon = _elements_data[element].icon
             key_name = ELEMENT_KEY_NAMES.get(element, '?')
+            fallback = get_element_fallback(icon)
 
-            # Draw icon
-            icon_surface = element_font.render(icon, True, (255, 255, 255))
+            # Draw icon with emoji font and fallback
+            icon_surface = render_emoji_with_fallback(
+                emoji_font,
+                icon,
+                (255, 255, 255),
+                fallback
+            )
             icon_rect = icon_surface.get_rect(center=(elem_x + 20, elem_y + elem_height//2))
             screen.blit(icon_surface, icon_rect)
 

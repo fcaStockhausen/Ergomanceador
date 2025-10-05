@@ -4,6 +4,7 @@ import logging
 from rendering.effects.projectile import Projectile
 from rendering.effects.particle import ParticleEmitter
 from rendering.effects.expanding_aoe import ExpandingAOE
+from rendering.effects.chain_lightning import ChainLightningEffect
 from rendering.ui.damage_numbers import DamageNumberManager
 from physics.collision import CollisionChecker
 from audio.sound_manager import SoundManager
@@ -20,6 +21,7 @@ class EffectManager:
         self.projectiles = []
         self.emitters = []
         self.expanding_aoes = []  # Radially expanding AOE effects
+        self.chain_lightnings = []  # Chain lightning effects
         self.enemies = []  # Reference to enemy list (set by Game)
         self.player = None  # Reference to player (set by Game)
         self.terrain = None  # Reference to terrain (set by Game) for damage bonuses
@@ -139,6 +141,61 @@ class EffectManager:
             proj = Projectile(player_x, player_y, target_x, target_y, spell_data, owner=owner)
             self.projectiles.append(proj)
 
+        elif behavior == 'chain':
+            # Chain lightning - Quake 1 style zigzag instant beam
+            import math
+
+            # Find nearest enemy as primary target
+            if owner == 'player':
+                valid_enemies = [e for e in self.enemies if e.health.is_alive]
+            else:
+                # Bot targeting (hit player or other bots)
+                valid_enemies = []
+                if self.player and self.player.health.is_alive:
+                    valid_enemies.append(self.player)
+                # Add other enemies (bots can hit each other)
+                valid_enemies.extend([e for e in self.enemies if e.health.is_alive])
+
+            if not valid_enemies:
+                logging.info("Chain lightning: No valid targets")
+                return
+
+            # Find nearest enemy to aim point
+            nearest = None
+            nearest_dist = float('inf')
+            for enemy in valid_enemies:
+                dx = enemy.cart_x - target_x
+                dy = enemy.cart_y - target_y
+                dist = math.sqrt(dx*dx + dy*dy)
+                if dist < nearest_dist:
+                    nearest_dist = dist
+                    nearest = enemy
+
+            if nearest:
+                # Create chain lightning effect
+                chain = ChainLightningEffect(
+                    player_x, player_y,
+                    nearest,
+                    valid_enemies,
+                    spell_data,
+                    owner=owner,
+                    max_chains=3  # Can chain to up to 3 additional targets
+                )
+                self.chain_lightnings.append(chain)
+
+                # Spawn damage numbers for all hit enemies
+                for enemy in chain.hit_enemies:
+                    # Calculate damage for this enemy
+                    damage = spell_data.get('damage', 50)
+                    # Damage already applied in chain lightning, just show numbers
+                    if enemy in valid_enemies:  # Still alive to show number
+                        self.damage_numbers.spawn(damage, enemy.cart_x, enemy.cart_y)
+
+                # Lightning sound and shake
+                self.sound.play('impact', volume=0.7)
+                if self.camera:
+                    self.camera.shake(intensity=8.0, duration=0.2)
+
     def update(self, dt):
         """Update all effects and check collisions"""
         import math
@@ -249,11 +306,21 @@ class EffectManager:
             if not aoe.alive:
                 self.expanding_aoes.remove(aoe)
 
+        # Update chain lightning effects
+        for chain in self.chain_lightnings[:]:
+            chain.update(dt)
+            if not chain.alive:
+                self.chain_lightnings.remove(chain)
+
         # Update damage numbers
         self.damage_numbers.update(dt)
 
     def draw(self, screen, camera_offset_x=0, camera_offset_y=0):
         """Draw all effects"""
+        # Draw chain lightning (render first, under everything)
+        for chain in self.chain_lightnings:
+            chain.draw(screen, self.camera)
+
         # Draw projectiles
         for proj in self.projectiles:
             proj.draw(screen, camera_offset_x, camera_offset_y)

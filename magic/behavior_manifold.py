@@ -50,6 +50,7 @@ class BehaviorManifold:
     AREA_DENIAL = 'area_denial'
     BUFF = 'buff'
     HEAL = 'heal'
+    SHIELD = 'shield'
     HOMING = 'homing'
     CHAIN = 'chain'
     SPLIT = 'split'
@@ -298,6 +299,29 @@ class BehaviorManifold:
                 0.5,   # total_energy (HIGHER - actively heals)
                 0.5,   # energy_density (HIGHER - concentrated healing)
                 0.95   # polarity_tension (VERY HIGH POSITIVE - pure life)
+            ]),
+            metric_tensor=identity_metric,
+            threshold=1.0
+        ))
+
+        # SHIELD: VERY HIGH density, VERY HIGH persistence, solid barrier
+        # CRITICAL: This fills the high-density + high-persistence gap in manifold
+        # DISTINCT from BUFF (buff = enhancement, shield = absorption)
+        regions.append(BehaviorRegion(
+            name=self.SHIELD,
+            prototype=np.array([
+                0.15,  # thermal_flux (VERY LOW - energy contained, not radiating)
+                0.3,   # avg_temperature (cool, stable)
+                0.1,   # temp_differential (VERY stable - no phase changes)
+                0.9,   # state_transition_energy (VERY HIGH - extremely persistent)
+                0.2,   # phase_diversity (LOW - single solid state)
+                0.2,   # density_gradient (LOW - uniform structure)
+                0.95,  # avg_density (VERY HIGH - solid crystalline barrier)
+                0.1,   # volatility (VERY LOW - doesn't break easily)
+                0.1,   # chaos_factor (VERY LOW - ordered crystal structure)
+                0.4,   # total_energy (MODERATE - defensive, not offensive)
+                0.4,   # energy_density (moderate - distributed in structure)
+                0.4    # polarity_tension (MODERATE POSITIVE - protective but not "holy")
             ]),
             metric_tensor=identity_metric,
             threshold=1.0

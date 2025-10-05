@@ -7,6 +7,7 @@ from config.colors import WHITE, GREEN, GRAY, BLUE, CYAN
 from rendering.isometric import cart_to_iso, screen_to_cart
 from components.health import Health
 from components.mana import Mana
+from entities.components.shield import Shield
 
 
 class Player:
@@ -29,6 +30,9 @@ class Player:
         self.health = Health(max_health=300)  # Higher health for longer fights
         self.mana = Mana(max_mana=100, regen_rate=15.0)  # 15 mana/second regen
         self.collision_radius = 0.5  # For collision with projectiles
+
+        # Shield component (created when shield spell is cast)
+        self.shield = None  # Shield instance, None if no shield active
 
         # Facing direction (for forward-facing targeting)
         self.facing_direction = (1, 0)  # Default facing right
@@ -85,6 +89,46 @@ class Player:
         """Update player state"""
         self.health.update(dt)
         self.mana.update(dt)  # Regenerate mana
+
+        # Update shield if active
+        if self.shield:
+            self.shield.update(dt)
+            if not self.shield.is_active():
+                self.shield = None  # Remove expired/broken shield
+
+    def take_damage(self, damage):
+        """
+        Take damage, shield absorbs first if active.
+
+        Args:
+            damage: Raw damage amount
+
+        Returns:
+            final_damage: Damage dealt to health after shield absorption
+        """
+        if self.shield and self.shield.is_active():
+            absorbed, overflow = self.shield.absorb_damage(damage)
+            logging.info(f"Shield absorbed {absorbed} damage, {overflow} overflow")
+
+            if overflow > 0:
+                self.health.damage(overflow)
+            return overflow
+        else:
+            # No shield, take full damage
+            self.health.damage(damage)
+            return damage
+
+    def apply_shield(self, shield_hp, duration):
+        """Apply a new shield or refresh existing one"""
+        if self.shield and self.shield.is_active():
+            # Refresh shield: add HP and reset duration
+            self.shield.current_shield_hp += shield_hp
+            self.shield.max_shield_hp += shield_hp
+            self.shield.time_remaining = max(self.shield.time_remaining, duration)
+            logging.info(f"Shield refreshed! New HP: {self.shield.current_shield_hp}")
+        else:
+            # Create new shield
+            self.shield = Shield(shield_hp, duration)
 
     def update_jump(self):
         if self.is_jumping:

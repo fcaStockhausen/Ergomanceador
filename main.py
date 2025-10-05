@@ -159,6 +159,8 @@ def main():
         if current_mode == 'menu':
             menu_manager.update()
         elif current_mode == 'game' and game:
+            # Game needs its own clock ticked for dt calculation
+            game.clock.tick()
             game.update()
         elif current_mode == 'designer' and designer_mode:
             designer_mode.update(dt)

@@ -22,6 +22,7 @@ from utils.logger import setup_logger
 from core.game import Game
 from core.menu import MenuManager
 from designer.designer_mode import DesignerMode
+from rendering.ui.sample_editor import SampleEditor
 from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT, FPS
 
 
@@ -61,10 +62,11 @@ def main():
     # Game systems
     game = None
     designer_mode = None
+    audio_editor = None
     menu_manager = MenuManager()
 
     # State management
-    current_mode = 'menu'  # 'menu', 'game', 'designer'
+    current_mode = 'menu'  # 'menu', 'game', 'designer', 'audio_editor'
 
     # Skip to requested mode if flag provided
     if skip_menu:
@@ -104,6 +106,12 @@ def main():
                     designer_mode.enter_designer_mode()
                     menu_manager.hide_menu()
                     logging.info("🎨 Starting Designer Mode")
+                elif action == 'audio_editor':
+                    # Start audio editor
+                    current_mode = 'audio_editor'
+                    audio_editor = SampleEditor(SCREEN_WIDTH, SCREEN_HEIGHT)
+                    menu_manager.hide_menu()
+                    logging.info("🎵 Starting Audio Editor")
                 elif action == 'settings':
                     logging.info("⚙️ Settings (not implemented yet)")
                 elif action == 'quit':
@@ -155,6 +163,20 @@ def main():
                             menu_manager.show_main_menu()
                             logging.info("📋 Returning to Menu")
 
+        elif current_mode == 'audio_editor':
+            # Audio editor handles its own events
+            if audio_editor:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+
+                    result = audio_editor.handle_event(event)
+                    if result == 'exit':
+                        # Return to menu
+                        current_mode = 'menu'
+                        menu_manager.show_main_menu()
+                        logging.info("📋 Returning to Menu from Audio Editor")
+
         # Update
         if current_mode == 'menu':
             menu_manager.update()
@@ -171,6 +193,8 @@ def main():
             game.update()
         elif current_mode == 'designer' and designer_mode:
             designer_mode.update(dt)
+        elif current_mode == 'audio_editor' and audio_editor:
+            audio_editor.update(dt)
 
         # Render
         if current_mode == 'menu':
@@ -182,6 +206,8 @@ def main():
             if game:
                 game.render()
             designer_mode.render(screen)
+        elif current_mode == 'audio_editor' and audio_editor:
+            audio_editor.render(screen)
 
         pygame.display.flip()
 

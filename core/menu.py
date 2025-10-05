@@ -179,6 +179,7 @@ class MainMenu(Menu):
         items = [
             ("Play Game", 'play'),
             ("Designer Mode", 'designer'),
+            ("Audio Editor", 'audio_editor'),
             ("Settings", 'settings'),
             ("Quit", 'quit')
         ]

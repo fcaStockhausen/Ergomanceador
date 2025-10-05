@@ -1,0 +1,55 @@
+{
+  "behavior_sounds": {
+    "projectile": {
+      "cast": {"file": null, "adsr": {"attack_time": 0.01, "decay_time": 0.1, "sustain_level": 0.7, "release_time": 0.2}, "volume": 0.7},
+      "travel": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.0, "sustain_level": 1.0, "release_time": 0.05}, "volume": 0.4},
+      "impact": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.05, "sustain_level": 0.0, "release_time": 0.1}, "volume": 0.8}
+    },
+    "beam": {
+      "cast": {"file": null, "adsr": {"attack_time": 0.05, "decay_time": 0.1, "sustain_level": 0.9, "release_time": 0.3}, "volume": 0.7},
+      "loop": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.0, "sustain_level": 1.0, "release_time": 0.0}, "volume": 0.5},
+      "end": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.2, "sustain_level": 0.0, "release_time": 0.3}, "volume": 0.6}
+    },
+    "aoe": {
+      "cast": {"file": null, "adsr": {"attack_time": 0.02, "decay_time": 0.15, "sustain_level": 0.6, "release_time": 0.3}, "volume": 0.7},
+      "expand": {"file": null, "adsr": {"attack_time": 0.05, "decay_time": 0.2, "sustain_level": 0.4, "release_time": 0.4}, "volume": 0.6},
+      "impact": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.1, "sustain_level": 0.0, "release_time": 0.2}, "volume": 0.8}
+    },
+    "heal": {
+      "cast": {"file": null, "adsr": {"attack_time": 0.02, "decay_time": 0.1, "sustain_level": 0.8, "release_time": 0.3}, "volume": 0.6},
+      "effect": {"file": null, "adsr": {"attack_time": 0.05, "decay_time": 0.2, "sustain_level": 0.7, "release_time": 0.4}, "volume": 0.5}
+    },
+    "shield": {
+      "activate": {"file": null, "adsr": {"attack_time": 0.01, "decay_time": 0.1, "sustain_level": 0.5, "release_time": 0.2}, "volume": 0.7},
+      "absorb": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.05, "sustain_level": 0.0, "release_time": 0.1}, "volume": 0.6},
+      "break": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.15, "sustain_level": 0.0, "release_time": 0.3}, "volume": 0.8}
+    },
+    "chain": {
+      "cast": {"file": null, "adsr": {"attack_time": 0.01, "decay_time": 0.08, "sustain_level": 0.6, "release_time": 0.2}, "volume": 0.7},
+      "jump": {"file": "data/sounds/thunder.opus", "start_time": 0.0, "end_time": 1.0, "adsr": {"attack_time": 0.001, "decay_time": 0.05, "sustain_level": 0.3, "release_time": 0.2}, "volume": 0.9},
+      "impact": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.05, "sustain_level": 0.0, "release_time": 0.15}, "volume": 0.7}
+    },
+    "homing": {
+      "cast": {"file": null, "adsr": {"attack_time": 0.01, "decay_time": 0.1, "sustain_level": 0.7, "release_time": 0.2}, "volume": 0.7},
+      "travel": {"file": null, "adsr": {"attack_time": 0.02, "decay_time": 0.05, "sustain_level": 0.8, "release_time": 0.1}, "volume": 0.4},
+      "impact": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.05, "sustain_level": 0.0, "release_time": 0.1}, "volume": 0.8}
+    },
+    "split": {
+      "cast": {"file": null, "adsr": {"attack_time": 0.01, "decay_time": 0.1, "sustain_level": 0.7, "release_time": 0.2}, "volume": 0.7},
+      "split_moment": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.08, "sustain_level": 0.2, "release_time": 0.15}, "volume": 0.6},
+      "impact": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.05, "sustain_level": 0.0, "release_time": 0.1}, "volume": 0.7}
+    },
+    "area_denial": {
+      "cast": {"file": null, "adsr": {"attack_time": 0.02, "decay_time": 0.15, "sustain_level": 0.7, "release_time": 0.4}, "volume": 0.7},
+      "loop": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.0, "sustain_level": 1.0, "release_time": 0.0}, "volume": 0.4},
+      "damage_tick": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.05, "sustain_level": 0.0, "release_time": 0.1}, "volume": 0.5}
+    },
+    "buff": {
+      "cast": {"file": null, "adsr": {"attack_time": 0.02, "decay_time": 0.1, "sustain_level": 0.8, "release_time": 0.3}, "volume": 0.6},
+      "apply": {"file": null, "adsr": {"attack_time": 0.01, "decay_time": 0.15, "sustain_level": 0.5, "release_time": 0.3}, "volume": 0.5},
+      "loop": {"file": null, "adsr": {"attack_time": 0.0, "decay_time": 0.0, "sustain_level": 1.0, "release_time": 0.0}, "volume": 0.3}
+    }
+  },
+  "sample_directory": "data/sounds",
+  "description": "Sound assignments for particle behaviors. Each behavior has multiple events (cast, impact, travel, etc.). Assign custom samples or use procedural fallback."
+}

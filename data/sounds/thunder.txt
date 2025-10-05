@@ -1,0 +1,9 @@
+Thunder sound effect - deep rumbling with electrical crackle.
+
+Suitable for:
+- Lightning spell impacts
+- Storm/weather ambience
+- Electric AOE effects
+- Chain lightning jumps
+
+Duration: ~2 seconds of rolling thunder

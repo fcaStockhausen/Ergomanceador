@@ -46,8 +46,8 @@ class EffectManager:
 
         logging.info(f"Spawning {behavior} effect: {spell_data.get('name', 'Unknown')} (owner: {owner})")
 
-        if behavior == 'projectile':
-            # Create projectile + trail particles
+        if behavior == 'projectile' or behavior == 'split':
+            # Create projectile (split projectiles fragment mid-flight)
             proj = Projectile(player_x, player_y, target_x, target_y, spell_data, owner=owner)
             self.projectiles.append(proj)
 
@@ -280,9 +280,30 @@ class EffectManager:
                         # Kill projectile
                         proj.alive = False
 
+            # Check if projectile split and spawn children
+            if proj.behavior == 'split' and proj.has_split and len(proj.child_projectiles) > 0:
+                # Add child projectiles to the list
+                for child in proj.child_projectiles:
+                    self.projectiles.append(child)
+                    logging.info(f"Split projectile spawned child at ({child.cart_x:.1f}, {child.cart_y:.1f})")
+
+                # Spawn split particle effect
+                from rendering.effects.particle import ParticleEmitter
+                split_effect = ParticleEmitter(
+                    proj.cart_x, proj.cart_y,
+                    'explosion',
+                    proj.color,
+                    duration=0.3,
+                    area=proj.area * 0.5  # Smaller split effect
+                )
+                self.emitters.append(split_effect)
+
+                # Clear children list after spawning
+                proj.child_projectiles.clear()
+
             if not proj.alive:
                 # Spawn explosion on impact for projectiles
-                if proj.behavior == 'projectile' or proj.behavior == 'homing':
+                if proj.behavior == 'projectile' or proj.behavior == 'homing' or proj.behavior == 'split':
                     explosion = ParticleEmitter(
                         proj.cart_x, proj.cart_y,
                         'explosion',

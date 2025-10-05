@@ -129,6 +129,7 @@ class InteractionEngine:
             'effects': list(all_tags),
             'elements': element_names,
             'emergent_blending': self.use_emergent_blending,  # NEW: Flag for UI
+            'property_vector': vector,  # NEW: Property vector for emergent behaviors (split count, etc)
             'properties': {
                 'temperature': vector.avg_temperature,
                 'energy': vector.total_energy,

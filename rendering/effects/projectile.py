@@ -12,7 +12,7 @@ class Projectile:
     Supports multiple behaviors: projectile, beam, homing.
     """
 
-    def __init__(self, start_x, start_y, target_x, target_y, spell_data, owner='player'):
+    def __init__(self, start_x, start_y, target_x, target_y, spell_data, owner='player', is_child=False):
         """
         Create projectile.
 
@@ -21,12 +21,14 @@ class Projectile:
             target_x, target_y: Target cartesian position (cursor)
             spell_data: Dict with spell properties (name, damage, area, behavior, color, etc.)
             owner: 'player' or 'bot' - who cast this spell
+            is_child: True if this is a child projectile from a split
         """
         self.cart_x = start_x
         self.cart_y = start_y
         self.target_x = target_x
         self.target_y = target_y
         self.owner = owner  # Track who cast this projectile
+        self.is_child = is_child  # Child projectiles don't split again
 
         self.spell_data = spell_data
         self.behavior = spell_data['behavior']
@@ -50,6 +52,11 @@ class Projectile:
         self.lifetime = 0.0
         self.max_lifetime = 5.0  # Projectiles die after 5 seconds
 
+        # Split behavior tracking
+        self.has_split = False
+        self.split_time = 0.5  # Split after 0.5 seconds of travel
+        self.child_projectiles = []  # Store child projectiles spawned from split
+
     def update(self, dt):
         """Update projectile position"""
         if not self.alive:
@@ -63,7 +70,7 @@ class Projectile:
             return
 
         # Move projectile
-        if self.behavior == 'projectile' or self.behavior == 'homing':
+        if self.behavior == 'projectile' or self.behavior == 'homing' or self.behavior == 'split':
             self.cart_x += self.vel_x
             self.cart_y += self.vel_y
 
@@ -75,9 +82,87 @@ class Projectile:
             if distance < 0.5:
                 self.alive = False
 
+            # SPLIT behavior: spawn child projectiles after split_time
+            if self.behavior == 'split' and not self.is_child and not self.has_split:
+                if self.lifetime >= self.split_time:
+                    self._perform_split()
+
         # Beams are instant - die immediately
         elif self.behavior == 'beam':
             self.alive = False
+
+    def _perform_split(self):
+        """
+        Split the projectile into N child projectiles (emergent from properties).
+        Number of children and spread angle determined by spell properties.
+        """
+        import random
+
+        self.has_split = True
+
+        # EMERGENT: Calculate number of children from property vector
+        # Access property vector if available
+        property_vector = self.spell_data.get('property_vector', None)
+
+        if property_vector:
+            # Number of splits based on chaos, volatility, phase_diversity, energy_density
+            # Formula: 1-5 children based on these properties
+            chaos = property_vector.chaos_factor  # 0-1
+            volatility = property_vector.volatility_index  # 0-1
+            phase_div = property_vector.phase_diversity  # 0-1
+            energy_dens = property_vector.energy_density / 150.0  # Normalize to 0-1
+
+            # Combine factors: more chaotic/volatile = more splits
+            split_factor = (chaos * 0.4 + volatility * 0.3 + phase_div * 0.2 + energy_dens * 0.1)
+
+            # Map to 1-5 children (floor so low chaos = 1-2, high chaos = 4-5)
+            num_children = int(1 + split_factor * 4)
+            num_children = max(1, min(5, num_children))  # Clamp to 1-5
+
+            # Spread angle also emergent: more chaos = wider spread
+            spread_angle = 20 + (chaos * 60)  # 20-80 degrees
+        else:
+            # Fallback if no property vector
+            num_children = 3
+            spread_angle = 40
+
+        for i in range(num_children):
+            # Calculate spread angle for this child
+            if num_children == 1:
+                angle_offset = 0  # Single child goes straight
+            else:
+                # Spread evenly across the angle
+                angle_offset = (i / (num_children - 1)) * spread_angle - (spread_angle / 2)
+
+            angle_rad = math.radians(angle_offset)
+
+            # Rotate velocity vector by angle_offset
+            cos_a = math.cos(angle_rad)
+            sin_a = math.sin(angle_rad)
+
+            new_vel_x = self.vel_x * cos_a - self.vel_y * sin_a
+            new_vel_y = self.vel_x * sin_a + self.vel_y * cos_a
+
+            # Calculate new target point (extend from current position)
+            extend_distance = 20.0  # How far child projectiles travel
+            new_target_x = self.cart_x + new_vel_x * extend_distance / self.speed
+            new_target_y = self.cart_y + new_vel_y * extend_distance / self.speed
+
+            # Create child projectile with reduced damage (60% of original)
+            child_spell_data = self.spell_data.copy()
+            child_spell_data['damage'] = child_spell_data.get('damage', 10) * 0.6
+            child_spell_data['behavior'] = 'projectile'  # Children are simple projectiles
+
+            # Create child (marked as is_child=True so it doesn't split again)
+            child = Projectile(
+                self.cart_x, self.cart_y,
+                new_target_x, new_target_y,
+                child_spell_data,
+                owner=self.owner,
+                is_child=True
+            )
+
+            self.child_projectiles.append(child)
 
     def draw(self, screen, camera_offset_x=0, camera_offset_y=0):
         """Draw projectile"""
@@ -86,7 +171,7 @@ class Projectile:
 
         if self.behavior == 'beam':
             self._draw_beam(screen, camera_offset_x, camera_offset_y)
-        elif self.behavior == 'projectile' or self.behavior == 'homing':
+        elif self.behavior == 'projectile' or self.behavior == 'homing' or self.behavior == 'split':
             self._draw_projectile(screen, camera_offset_x, camera_offset_y)
 
     def _draw_projectile(self, screen, camera_offset_x, camera_offset_y):

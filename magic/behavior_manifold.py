@@ -52,6 +52,7 @@ class BehaviorManifold:
     HEAL = 'heal'
     HOMING = 'homing'
     CHAIN = 'chain'
+    SPLIT = 'split'
 
     def __init__(self):
         """Initialize the behavior manifold with prototype regions"""
@@ -339,6 +340,27 @@ class BehaviorManifold:
                 0.7,   # total_energy (HIGH - needs power to jump)
                 0.6,   # energy_density
                 0.0    # polarity_tension
+            ]),
+            metric_tensor=identity_metric,
+            threshold=1.0
+        ))
+
+        # SPLIT: High chaos, high temp, LOW density (non-dense gaseous splitting)
+        regions.append(BehaviorRegion(
+            name=self.SPLIT,
+            prototype=np.array([
+                0.6,   # thermal_flux (HIGH - energetic splitting)
+                0.8,   # avg_temperature (VERY HIGH - hot, chaotic)
+                0.7,   # temp_differential (HIGH - unstable)
+                0.3,   # state_transition_energy (LOW - easily fragments)
+                0.7,   # phase_diversity (HIGH - multi-state chaos)
+                0.6,   # density_gradient (HIGH - uneven distribution causes split)
+                0.2,   # avg_density (VERY LOW - gaseous, non-dense)
+                0.8,   # volatility (HIGH - explosive tendency)
+                0.9,   # chaos_factor (VERY HIGH - unpredictable fragmentation)
+                0.6,   # total_energy (HIGH - enough to split)
+                0.5,   # energy_density (moderate)
+                -0.3   # polarity_tension (SLIGHTLY NEGATIVE - unstable)
             ]),
             metric_tensor=identity_metric,
             threshold=1.0

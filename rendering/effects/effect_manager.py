@@ -288,7 +288,6 @@ class EffectManager:
                     logging.info(f"Split projectile spawned child at ({child.cart_x:.1f}, {child.cart_y:.1f})")
 
                 # Spawn split particle effect
-                from rendering.effects.particle import ParticleEmitter
                 split_effect = ParticleEmitter(
                     proj.cart_x, proj.cart_y,
                     'explosion',

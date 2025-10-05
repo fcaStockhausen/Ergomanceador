@@ -13,6 +13,7 @@ from audio.metadata_generator import MetadataGenerator
 from rendering.ui.sample_grid import SampleGrid
 from rendering.ui.waveform_display import WaveformDisplay
 from rendering.ui.metadata_editor import MetadataEditor
+from rendering.ui.metadata_modal import MetadataModal
 
 
 class SampleEditor:
@@ -84,6 +85,9 @@ class SampleEditor:
         # Save notification animation (particle explosion)
         self.save_particles = []  # List of {x, y, vx, vy, life, color}
 
+        # Metadata modal (M key)
+        self.metadata_modal = MetadataModal(screen_width, screen_height)
+
     def _setup_adsr_sliders(self, panel_width):
         """Setup ADSR slider positions"""
         slider_width = min(300, panel_width - 20)
@@ -142,6 +146,11 @@ class SampleEditor:
         Returns:
             'exit' to close editor, None otherwise
         """
+        # Modal takes priority
+        if self.metadata_modal.active:
+            self.metadata_modal.handle_event(event)
+            return None
+
         if event.type == pygame.KEYDOWN:
             # Check for Cmd/Ctrl modifiers first
             mods = pygame.key.get_mods()
@@ -154,6 +163,11 @@ class SampleEditor:
             elif event.key == pygame.K_s and cmd_or_ctrl:
                 if self.current_sample:
                     self._save_sample_settings()
+
+            # Open metadata modal (M key)
+            elif event.key == pygame.K_m:
+                if self.current_sample:
+                    self.metadata_modal.open(self.current_sample)
 
             # Arrow keys for grid navigation
             elif event.key == pygame.K_UP:
@@ -223,6 +237,10 @@ class SampleEditor:
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_x, mouse_y = event.pos
+
+            # Modal gets events first
+            if self.metadata_modal.active:
+                return None
 
             # Check sample grid click
             if self.sample_grid.handle_click(mouse_x, mouse_y):
@@ -405,7 +423,7 @@ class SampleEditor:
 
         # Instructions
         instructions = [
-            f"{len(self.library.samples)} samples | Type: search | Arrows: navigate | Space: preview | Cmd+S: save",
+            f"{len(self.library.samples)} samples | Type: search | Arrows: navigate | Space: preview | M: metadata | Cmd+S: save",
             "Wheel: scroll (0.1s) | Cmd+Wheel: fine (0.01s) | Drag: super fine | C: reset | ESC: exit"
         ]
         y_offset = self.screen_height - 40
@@ -426,6 +444,9 @@ class SampleEditor:
 
         # Save particles (drawn last, on top)
         self._draw_particles(screen)
+
+        # Metadata modal (drawn on top of everything)
+        self.metadata_modal.render(screen)
 
     def _draw_particles(self, screen):
         """Draw save particles"""

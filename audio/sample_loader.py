@@ -39,6 +39,11 @@ class AudioSample:
         # Playback settings (saved in metadata JSON)
         self.adsr = None  # ADSR envelope settings dict: {attack, decay, sustain, release}
         self.trim_start = 0.0  # Start offset in seconds
+        self.volume_db = 0.0  # Volume adjustment in dB (-12 to +6, 0 = normalized level)
+
+        # Normalization metadata (auto-computed on load)
+        self.original_peak = 1.0  # Peak amplitude before normalization
+        self.normalized = False  # Whether waveform has been normalized
 
         # Sound manifold vector (8D audio property space)
         # Projects to spell manifold for geometric matching
@@ -67,16 +72,28 @@ class AudioSample:
                 self.waveform = sound_array
                 self.channels = 1
 
-            # Normalize to -1.0 to 1.0 range
+            # Normalize to -1.0 to 1.0 range, then to target RMS
             max_val = np.max(np.abs(self.waveform))
+            self.original_peak = max_val
+
             if max_val > 0:
+                # First normalize to -1.0 to 1.0
                 self.waveform = self.waveform.astype(np.float32) / max_val
+
+                # Then normalize to target RMS level (-3dB = 0.707)
+                # This ensures consistent loudness across samples
+                current_rms = np.sqrt(np.mean(self.waveform ** 2))
+                if current_rms > 0:
+                    target_rms = 0.707  # -3dB reference level
+                    self.waveform = self.waveform * (target_rms / current_rms)
+                    self.normalized = True
 
             # Calculate duration
             self.duration = len(self.waveform) / self.sample_rate
 
+            norm_status = "normalized" if self.normalized else "raw"
             logging.info(f"Loaded audio sample: {os.path.basename(self.file_path)} "
-                        f"({self.duration:.2f}s, {self.channels} ch, {self.sample_rate}Hz)")
+                        f"({self.duration:.2f}s, {self.channels} ch, {self.sample_rate}Hz, {norm_status}, peak={self.original_peak:.3f})")
 
         except Exception as e:
             logging.error(f"Failed to load audio sample {self.file_path}: {e}")
@@ -150,6 +167,7 @@ class AudioSample:
                     # Load playback settings
                     self.adsr = meta.get('adsr')  # None if not set
                     self.trim_start = meta.get('trim_start', 0.0)
+                    self.volume_db = meta.get('volume_db', 0.0)
 
                     # Load sound manifold vector (8D audio space)
                     if 'sound_vector' in meta:
@@ -183,6 +201,8 @@ class AudioSample:
             data['adsr'] = self.adsr
         if self.trim_start > 0.0:
             data['trim_start'] = self.trim_start
+        if self.volume_db != 0.0:
+            data['volume_db'] = self.volume_db
 
         # Save sound manifold vector (8D audio space)
         data['sound_vector'] = self.sound_vector.to_dict()
@@ -229,14 +249,22 @@ class AudioSample:
         # Stop any currently playing sounds first (prevent double-play)
         pygame.mixer.stop()
 
+        # Apply volume_db gain (convert dB to linear)
+        # volume_db is stored in metadata, volume parameter is from caller
+        volume_gain = 10 ** (self.volume_db / 20.0)  # dB to linear
+        final_volume = volume * volume_gain
+
         # If no envelope or trimming, play original
         if not adsr_envelope and start_time == 0.0 and end_time is None:
-            self.sound.set_volume(volume)
+            self.sound.set_volume(final_volume)
             self.sound.play()
             return
 
         # Get trimmed waveform
         waveform = self.get_sample_range(start_time, end_time)
+
+        # Apply volume gain to waveform
+        waveform = waveform * volume_gain
 
         # Apply ADSR envelope if provided
         if adsr_envelope:
@@ -256,7 +284,7 @@ class AudioSample:
 
             # Create Sound from array
             processed_sound = pygame.sndarray.make_sound(stereo)
-            processed_sound.set_volume(volume)
+            processed_sound.set_volume(final_volume)
             processed_sound.play()
 
         except Exception as e:

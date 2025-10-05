@@ -34,6 +34,7 @@ class MetadataModal:
         self.tags_text = ""
         self.description = ""
         self.sound_vector = SoundVector()
+        self.volume_db = 0.0  # Volume adjustment in dB (-12 to +6)
 
         # Category prototypes
         self.categories = SoundManifold.list_categories()
@@ -105,6 +106,12 @@ class MetadataModal:
                 'value': getattr(self.sound_vector, name)
             }
 
+        # Volume slider (below 8D sliders)
+        volume_slider_y = slider_y + len(self.slider_names) * slider_spacing + 20
+        self.volume_slider = pygame.Rect(right_x, volume_slider_y, slider_width, slider_height)
+        self.volume_slider_label_y = volume_slider_y - 22
+        self.dragging_volume = False
+
         # Bottom buttons
         btn_y = self.panel_y + self.panel_height - 60
         btn_width = 120
@@ -133,6 +140,7 @@ class MetadataModal:
         self.category = audio_sample.category or ""
         self.tags_text = ', '.join(audio_sample.tags) if audio_sample.tags else ""
         self.description = audio_sample.description or ""
+        self.volume_db = audio_sample.volume_db
         self.sound_vector = SoundVector(
             attack=audio_sample.sound_vector.attack,
             decay=audio_sample.sound_vector.decay,
@@ -162,6 +170,7 @@ class MetadataModal:
         self.current_sample.category = self.category
         self.current_sample.tags = [t.strip() for t in self.tags_text.split(',') if t.strip()]
         self.current_sample.description = self.description
+        self.current_sample.volume_db = self.volume_db
 
         # Update sound vector
         self.current_sample.sound_vector = SoundVector(
@@ -245,6 +254,12 @@ class MetadataModal:
                     self._update_slider_value(name, mouse_x)
                     return True
 
+            # Check volume slider
+            if self.volume_slider.collidepoint(mouse_x, mouse_y):
+                self.dragging_volume = True
+                self._update_volume_slider(mouse_x)
+                return True
+
             # Check text fields (simple click detection)
             if self.category_rect.collidepoint(mouse_x, mouse_y):
                 # Cycle through categories
@@ -256,11 +271,18 @@ class MetadataModal:
             if self.dragging_slider:
                 self.dragging_slider = False
                 return True
+            if self.dragging_volume:
+                self.dragging_volume = False
+                return True
 
         elif event.type == pygame.MOUSEMOTION:
             if self.dragging_slider and self.active_slider:
                 mouse_x, _ = event.pos
                 self._update_slider_value(self.active_slider, mouse_x)
+                return True
+            if self.dragging_volume:
+                mouse_x, _ = event.pos
+                self._update_volume_slider(mouse_x)
                 return True
 
         return False
@@ -275,6 +297,15 @@ class MetadataModal:
         normalized = max(0.0, min(1.0, normalized))
 
         slider['value'] = normalized
+
+    def _update_volume_slider(self, mouse_x):
+        """Update volume slider from mouse position"""
+        # Map slider position to dB range (-12 to +6)
+        normalized = (mouse_x - self.volume_slider.x) / self.volume_slider.width
+        normalized = max(0.0, min(1.0, normalized))
+
+        # Map 0-1 to -12dB to +6dB
+        self.volume_db = -12.0 + (normalized * 18.0)
 
     def render(self, screen):
         """Render modal overlay"""
@@ -305,6 +336,9 @@ class MetadataModal:
 
         # Right column (8D sliders)
         self._draw_sliders(screen)
+
+        # Volume slider
+        self._draw_volume_slider(screen)
 
         # Buttons
         self._draw_buttons(screen)
@@ -394,6 +428,41 @@ class MetadataModal:
             # Border
             border_color = (150, 200, 255) if name == self.active_slider else (100, 100, 120)
             pygame.draw.rect(screen, border_color, rect, 2)
+
+    def _draw_volume_slider(self, screen):
+        """Draw volume slider with dB label"""
+        # Label with current dB value
+        label_text = f"Volume: {self.volume_db:+.1f} dB"
+        label = self.small_font.render(label_text, True, self.label_color)
+        screen.blit(label, (self.volume_slider.x, self.volume_slider_label_y))
+
+        # Track
+        pygame.draw.rect(screen, self.slider_track, self.volume_slider)
+
+        # Fill (map -12dB to +6dB to 0-1)
+        normalized = (self.volume_db + 12.0) / 18.0
+        fill_width = int(normalized * self.volume_slider.width)
+        fill_rect = pygame.Rect(self.volume_slider.x, self.volume_slider.y, fill_width, self.volume_slider.height)
+
+        # Color based on volume (green for normal, yellow for boosted, red for cut)
+        if self.volume_db < -3.0:
+            fill_color = (200, 100, 100)  # Red for cut
+        elif self.volume_db > 3.0:
+            fill_color = (255, 200, 100)  # Yellow for boost
+        else:
+            fill_color = (100, 200, 150)  # Green for normal
+
+        pygame.draw.rect(screen, fill_color, fill_rect)
+
+        # Center line (0dB reference)
+        center_x = self.volume_slider.x + int((12.0 / 18.0) * self.volume_slider.width)
+        pygame.draw.line(screen, (150, 150, 150),
+                        (center_x, self.volume_slider.y),
+                        (center_x, self.volume_slider.y + self.volume_slider.height), 2)
+
+        # Border
+        border_color = (150, 200, 255) if self.dragging_volume else (100, 100, 120)
+        pygame.draw.rect(screen, border_color, self.volume_slider, 2)
 
     def _draw_buttons(self, screen):
         """Draw save/cancel buttons"""

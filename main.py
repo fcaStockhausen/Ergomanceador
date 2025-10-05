@@ -159,12 +159,15 @@ def main():
         if current_mode == 'menu':
             menu_manager.update()
         elif current_mode == 'game' and game:
-            # Game needs its own clock ticked for dt calculation
+            # Tick game's clock to track elapsed time (but don't limit FPS - main loop does that)
             game.clock.tick()
 
             # Handle continuous input (held keys for movement)
+            # Uses main loop's dt for frame-rate independent movement
             game.handle_continuous_input(dt)
 
+            # Update game state
+            # Game.update() calculates its own dt from game.clock.get_time()
             game.update()
         elif current_mode == 'designer' and designer_mode:
             designer_mode.update(dt)

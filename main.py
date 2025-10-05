@@ -84,13 +84,12 @@ def main():
     while running:
         dt = clock.tick(FPS) / 1000.0  # Delta time in seconds
 
-        # Event handling
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+        # Event handling - different modes handle events differently
+        if current_mode == 'menu':
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
 
-            # Route events based on current mode
-            if current_mode == 'menu':
                 action = menu_manager.handle_event(event)
                 if action == 'play':
                     # Start game
@@ -110,18 +109,41 @@ def main():
                 elif action == 'quit':
                     running = False
 
-            elif current_mode == 'game':
-                # Check for F1 to enter designer mode from game
-                if game and event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
-                    current_mode = 'designer'
-                    if not designer_mode:
-                        designer_mode = DesignerMode(SCREEN_WIDTH, SCREEN_HEIGHT)
-                    designer_mode.enter_designer_mode()
-                    logging.info("🎨 Switching to Designer Mode")
+        elif current_mode == 'game':
+            # Game mode - check for F1, then let game handle remaining events
+            if game:
+                events_to_pass = []
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                    elif event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
+                        current_mode = 'designer'
+                        if not designer_mode:
+                            designer_mode = DesignerMode(SCREEN_WIDTH, SCREEN_HEIGHT)
+                        designer_mode.enter_designer_mode()
+                        logging.info("🎨 Switching to Designer Mode")
+                    else:
+                        # Save event for game to process
+                        events_to_pass.append(event)
 
-            elif current_mode == 'designer':
-                # Designer mode handles its own events
-                if designer_mode:
+                # Put events back in queue for game to handle
+                if current_mode == 'game':  # Only if we didn't switch modes
+                    for event in events_to_pass:
+                        pygame.event.post(event)
+
+                    game.handle_events()
+
+                    # Check if game wants to quit
+                    if not game.running:
+                        running = False
+
+        elif current_mode == 'designer':
+            # Designer mode handles its own events
+            if designer_mode:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+
                     result = designer_mode.handle_input(event)
                     if result == 'exit' or result == 'toggle':
                         # Return to game or menu
@@ -132,14 +154,6 @@ def main():
                             current_mode = 'menu'
                             menu_manager.show_main_menu()
                             logging.info("📋 Returning to Menu")
-
-        # Game mode handles event queue (must be after pygame.event.get() loop)
-        if current_mode == 'game' and game:
-            game.handle_events()
-
-            # Check if game wants to quit
-            if not game.running:
-                running = False
 
         # Update
         if current_mode == 'menu':

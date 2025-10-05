@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Karaokeficador - A Magicka/Warcraft 3 Warlocks-inspired arena combat game with property-based magic system, dual-hand controls, Xbox controller support, and deathmatch AI bots. Features emergent spell interactions, expanding AOE effects, and frame-rate independent movement.
+Karaokeficador - A Magicka/Warcraft 3 Warlocks-inspired arena combat game with property-based magic system, dual-hand controls, Xbox controller support, and deathmatch AI bots. Features emergent spell interactions, expanding AOE effects, frame-rate independent movement, and **in-game designer mode** for creating/tuning behavior prototypes.
 
 ## Development Environment
 
@@ -28,10 +28,20 @@ conda create -n karaokeficador python=3.10 -y
 conda activate karaokeficador
 pip install -r requirements.txt
 
-# Run the game
+# Run the game (shows menu)
 python main.py
 
+# Run game directly (skip menu)
+python main.py --play
+
+# Run designer mode (in-game behavior toolkit)
+python main.py --designer
+
+# Run with manifold HUD panel
+python main.py --manifold-hud
+
 # Quit game: ESC or Cmd+Q (Mac) / Ctrl+Q (Windows/Linux)
+# Toggle designer mode: F1 (from game)
 ```
 
 **IMPORTANT for Claude Code:**
@@ -206,11 +216,14 @@ This prevents the common isometric movement bug where controls feel "rotated 45�
 - ✅ 9 elements with physical properties (temperature, energy, density, volatility, tags)
 - ✅ Automatic interaction engine - no hard-coded spell combinations
 - ✅ Emergent spell effects from property combinations
-- ✅ Element queueing system (max 5 elements, ordered combinations)
+- ✅ Element queueing system (max 6 elements, ordered combinations - supports keyboard chords)
 - ✅ Real-time spell preview UI showing computed damage/area/duration/temperature
 - ✅ Multiple spell behaviors: projectile, beam, AOE, heal, shield
 - ✅ Procedural spell naming based on property interactions
 - ✅ Nature element healing with visual feedback (green/cyan +numbers)
+- ✅ 12D property vector space with manifold classification
+- ✅ Behavior prototypes with distance-based classification
+- ✅ Custom prototype support (saved to `data/custom_prototypes.json`)
 
 **Combat System:**
 - ✅ Projectile system with collision detection
@@ -237,16 +250,30 @@ This prevents the common isometric movement bug where controls feel "rotated 45�
 - ✅ Analog stick aiming and movement
 - ✅ LT self-cast, RT aimed cast
 
+**Designer Mode (In-Game Toolkit):**
+- ✅ F1 toggle from game to designer mode
+- ✅ Two-panel interface: Testing Lab + Prototype Editor
+- ✅ Queue 1-6 elements and see position in 12D space
+- ✅ Distance analysis to all prototypes (color-coded by threshold)
+- ✅ Decision helper (create new / tune existing)
+- ✅ Visual 12D property sliders for prototype editing
+- ✅ Validation warnings (distance checking, value ranges)
+- ✅ Save/load custom prototypes to JSON
+- ✅ No coding required - fully in-game workflow
+- ✅ Complete documentation: `docs/DESIGNER_MODE_GUIDE.md`
+
 **Technical Implementation:**
-- ✅ Modular architecture (~5,200 LOC, 17 modules)
+- ✅ Modular architecture (~7,500 LOC, 22 modules)
 - ✅ Screen-space to cartesian coordinate transformation
 - ✅ Camera offset system for all renderables
 - ✅ Debug interface with coordinate visualization, bot position tracing
 - ✅ Event-based logging (not per-frame spam)
 - ✅ Cross-platform quit commands (ESC, Cmd+Q, Ctrl+Q)
 - ✅ TAS testing framework (14 verified tests)
-- ✅ Pytest integration (70 tests)
+- ✅ Pytest integration (70+ tests)
 - ✅ Centralized movement speed (BASE_MOVEMENT_SPEED with multipliers)
+- ✅ Menu system with state management
+- ✅ Designer mode coordinator with panel management
 
 **Tuned Parameters:**
 - Base movement speed: 200 units/second (frame-rate independent)

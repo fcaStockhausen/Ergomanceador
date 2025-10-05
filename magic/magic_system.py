@@ -20,9 +20,10 @@ class MagicSystem:
         # TODO Phase 5: Implement progression system to unlock gradually
         self.unlocked_elements = ['fire', 'water', 'ice', 'earth', 'nature', 'arcane', 'light', 'shadow', 'lightning']
 
-        # Element queue (ordered list, max 4 elements like Magicka)
+        # Element queue (ordered list, max 6 elements - extended for designer mode)
+        # Keyboard supports chords, allowing complex spell discovery
         self.element_queue = []
-        self.max_queue_size = 4
+        self.max_queue_size = 6
 
     def queue_element(self, element):
         """

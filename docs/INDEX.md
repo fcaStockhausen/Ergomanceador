@@ -8,31 +8,37 @@
 
 ### Getting Started
 
-1. **[Quick Start - Manifold HUD](QUICKSTART_MANIFOLD.md)**
+1. **[Designer Mode Guide](DESIGNER_MODE_GUIDE.md)** ⭐ IN-GAME TOOLKIT - **START HERE**
+   - Complete in-game behavior design toolkit
+   - No coding required - use F1 to launch
+   - Create, test, and tune prototypes entirely in-game
+   - Supports 1-6 element combinations (keyboard chords!)
+
+2. **[Quick Start - Manifold HUD](QUICKSTART_MANIFOLD.md)**
    - Run the game with real-time behavior visualization
    - See spells move through 12D property space
    - 5-minute intro to the system
 
-2. **[Quick Start - Testing Framework](QUICKSTART_TESTING.md)**
+3. **[Quick Start - Testing Framework](QUICKSTART_TESTING.md)**
    - TAS testing system overview
    - Running and creating tests
 
 ### Core Concepts
 
-3. **[Manifold Systems Overview](MANIFOLD_SYSTEMS.md)** ⭐ START HERE
+4. **[Manifold Systems Overview](MANIFOLD_SYSTEMS.md)** ⭐ CORE CONCEPTS
    - What is the manifold-based magic system?
    - Property vectors (12D space)
    - Behavior classification
    - Spatial manifolds
    - Why this architecture?
 
-4. **[Emergent vs Hardcoded Behavior](EMERGENT_VS_HARDCODED.md)** ⭐ PHILOSOPHY
+5. **[Emergent vs Hardcoded Behavior](EMERGENT_VS_HARDCODED.md)** ⭐ PHILOSOPHY
    - What makes behavior truly emergent?
    - Weighted stat blending
    - Why names are just labels
    - The geometry of magic
 
-5. **[Emergent Behaviors Guide](EMERGENT_BEHAVIORS.md)**
+6. **[Emergent Behaviors Guide](EMERGENT_BEHAVIORS.md)**
    - How behaviors emerge from properties
    - Finding gaps in behavior space
    - Particle system integration
@@ -40,63 +46,63 @@
 
 ### Behavior Tuning & Design
 
-6. **[Designer Guide - Behavior Tuning](DESIGNER_GUIDE_BEHAVIOR_TUNING.md)** ⭐ FOR DESIGNERS
+7. **[Designer Guide - Behavior Tuning](DESIGNER_GUIDE_BEHAVIOR_TUNING.md)** ⭐ DETAILED WORKFLOW
    - Step-by-step guide to finding new behaviors
    - Tuning existing prototypes
    - Adding new prototypes
    - Testing and validation
-   - No coding required!
+   - Advanced reference (complements Designer Mode)
 
-7. **[Behavior Composition System](BEHAVIOR_COMPOSITION.md)**
+8. **[Behavior Composition System](BEHAVIOR_COMPOSITION.md)**
    - Multi-label classification
    - Distance thresholds
    - Composable behaviors
    - Integration strategies
 
-8. **[Space Homogeneity Analysis](SPACE_HOMOGENEITY.md)**
+9. **[Space Homogeneity Analysis](SPACE_HOMOGENEITY.md)**
    - Prototype spacing
    - Balance validation
    - Distance distributions
 
 ### Visualization & Tools
 
-9. **[Real-Time Visualizer](REALTIME_VISUALIZER.md)**
-   - In-game manifold HUD
-   - Standalone high-DPI visualizer
-   - Tracking spells in 12D space
-   - Customization options
+10. **[Real-Time Visualizer](REALTIME_VISUALIZER.md)**
+    - In-game manifold HUD
+    - Standalone high-DPI visualizer
+    - Tracking spells in 12D space
+    - Customization options
 
-10. **[Visualization Summary](VISUALIZATION_SUMMARY.md)**
+11. **[Visualization Summary](VISUALIZATION_SUMMARY.md)**
     - Complete visualization guide
     - Particle system overview
     - File structure
 
-11. **[Visualization Quick Start](VISUALIZATION_QUICKSTART.md)**
+12. **[Visualization Quick Start](VISUALIZATION_QUICKSTART.md)**
     - Running visualizers
     - Interpreting the display
     - Basic usage
 
 ### Integration & Development
 
-12. **[Integration Guide](INTEGRATION_GUIDE.md)**
+13. **[Integration Guide](INTEGRATION_GUIDE.md)**
     - Replacing old interaction engine
     - Side-by-side testing
     - Spatial manifold integration
     - Migration steps
 
-13. **[Integration Summary](INTEGRATION_SUMMARY.md)**
+14. **[Integration Summary](INTEGRATION_SUMMARY.md)**
     - What's been created
     - Current status
     - Next steps
 
-14. **[Particle Integration](PARTICLE_INTEGRATION.md)**
+15. **[Particle Integration](PARTICLE_INTEGRATION.md)**
     - Adding particles to spells
     - Behavior-specific effects
     - Step-by-step integration
 
 ### Testing
 
-15. **[Testing Framework](TESTING.md)**
+16. **[Testing Framework](TESTING.md)**
     - TAS system
     - Unit tests
     - Manifold tests
@@ -106,14 +112,15 @@
 
 ## 🎯 Reading Paths
 
-### For Game Designers
+### For Game Designers (No Coding Required!)
 
-Want to tune spell behaviors without coding?
+Want to create and tune spell behaviors **entirely in-game**?
 
-1. [Manifold Systems Overview](MANIFOLD_SYSTEMS.md) - Understand the theory
-2. [Designer Guide - Behavior Tuning](DESIGNER_GUIDE_BEHAVIOR_TUNING.md) - Practical guide
-3. [Real-Time Visualizer](REALTIME_VISUALIZER.md) - See it in action
-4. [Behavior Composition](BEHAVIOR_COMPOSITION.md) - Advanced concepts
+1. ⭐ **[Designer Mode Guide](DESIGNER_MODE_GUIDE.md)** - In-game toolkit (Press F1!)
+2. [Manifold Systems Overview](MANIFOLD_SYSTEMS.md) - Understand the 12D space
+3. [Designer Guide - Behavior Tuning](DESIGNER_GUIDE_BEHAVIOR_TUNING.md) - Advanced workflow
+4. [Real-Time Visualizer](REALTIME_VISUALIZER.md) - See it in action
+5. [Behavior Composition](BEHAVIOR_COMPOSITION.md) - Multi-label concepts
 
 ### For Developers
 

@@ -16,9 +16,11 @@ from rendering.ui.spell_preview import draw_spell_preview
 from rendering.ui.debug_panel import draw_debug_panel, draw_movement_arrow
 from rendering.ui.element_queue_display import draw_element_queue, draw_available_elements
 from rendering.ui.controller_hud import draw_controller_status, draw_controller_element_hints
+from rendering.ui.manifold_panel import ManifoldPanel
 from core.camera import Camera
 from input.input_manager import InputManager
 from rendering.effects.effect_manager import EffectManager
+import os
 
 
 class Game:
@@ -76,6 +78,21 @@ class Game:
         self.bots = []  # AI-controlled bots
         self._spawn_initial_enemies()  # Spawn enemies and bots
         self.effect_manager.enemies = self.enemies  # Give effects access to enemies
+
+        # Manifold HUD panel (optional - enabled via environment variable or debug mode)
+        self.show_manifold = os.environ.get('MANIFOLD_HUD') == '1' or DEBUG_MODE
+        self._last_element_queue = []  # Track changes (always init)
+
+        if self.show_manifold:
+            # Position in top-right corner
+            panel_width = 320
+            panel_height = 280
+            panel_x = SCREEN_WIDTH - panel_width - 10
+            panel_y = 10
+            self.manifold_panel = ManifoldPanel(panel_x, panel_y, panel_width, panel_height)
+            logging.info("✨ Behavior Manifold HUD enabled!")
+        else:
+            self.manifold_panel = None
 
     def _find_safe_spawn(self):
         """Find a safe spawn position (no damaging terrain)"""
@@ -255,6 +272,13 @@ class Game:
 
                 logging.info("Enemy removed from game")
 
+        # Update manifold panel if element queue changed
+        if self.show_manifold and self.manifold_panel:
+            current_queue = list(self.magic.element_queue)
+            if current_queue != self._last_element_queue:
+                self.manifold_panel.update_current_spell(current_queue)
+                self._last_element_queue = current_queue
+
     def render(self):
         """Render everything"""
         self.screen.fill(BLACK)
@@ -299,6 +323,10 @@ class Game:
         if DEBUG_MODE:
             draw_debug_panel(self.screen, self.font, self.player)
             draw_movement_arrow(self.screen, self.player)
+
+        # Draw manifold HUD panel (if enabled)
+        if self.show_manifold and self.manifold_panel:
+            self.manifold_panel.draw(self.screen)
 
         pygame.display.flip()
 

@@ -1,30 +1,55 @@
-"""Interaction engine for computing spell effects from element properties"""
+"""
+Interaction engine using MANIFOLD-BASED classification.
+
+This is the NEW version - uses PropertyVector + BehaviorManifold
+instead of if-else chains for spell classification.
+
+OLD version backed up as: interaction_engine_OLD.py
+"""
 
 from magic.element_loader import load_elements_from_json
+from magic.property_vector import PropertyVectorComputer
+from magic.behavior_manifold import BehaviorManifold
+from magic.spell_formulas import SpellFormulas
+from magic.behavior_composer import BehaviorComposer
+import os
 
 
 class InteractionEngine:
     """
-    Computes spell effects from element property combinations.
-    Supports cancellation, amplification, and emergent spell behaviors.
+    Computes spell effects using manifold-based classification.
+
+    NEW: Uses geometric classification in property space.
+    Backwards compatible with old API.
     """
 
     def __init__(self):
         # Load elements from JSON
         self.elements = load_elements_from_json()
 
-        # Define opposing element pairs (cancel each other)
+        # NEW: Manifold-based systems
+        self.manifold = BehaviorManifold()
+        self.formulas = SpellFormulas()
+        self.composer = BehaviorComposer(self.manifold)  # Multi-label classification
+
+        # Enable emergent blending (can be toggled via environment variable)
+        self.use_emergent_blending = os.environ.get('EMERGENT_BLENDING', '1') == '1'
+
+        # Keep old opposing pairs for reference (not used in classification anymore)
         self.opposing_pairs = [
             ('fire', 'water'),
             ('fire', 'ice'),
             ('earth', 'air'),
-            ('lightning', 'earth'),  # Lightning grounded by earth
-            ('light', 'shadow')      # Opposite polarities
+            ('lightning', 'earth'),
+            ('light', 'shadow')
         ]
 
     def compute_interaction(self, element_names):
         """
         Generate spell effect from element properties.
+
+        NEW: Uses manifold classification instead of if-else chains.
+
         Returns complete spell descriptor with behavior, damage, speed, area, etc.
         """
         if not element_names:
@@ -35,178 +60,94 @@ class InteractionEngine:
         if not elems:
             return None
 
-        # 1. Check element cancellations (opposing elements reduce damage)
-        cancellation_mult = self._check_cancellation(elems)
+        # ===== NEW: MANIFOLD-BASED CLASSIFICATION =====
 
-        # 2. Compute polarity interactions (opposite polarities amplify)
-        polarity_mult = self._compute_polarity_bonus(elems)
+        # 1. Compute property vector (12D space)
+        vector = PropertyVectorComputer.compute(elems)
 
-        # 3. Calculate combined physical properties
-        avg_temp = sum(e.temperature for e in elems) / len(elems)
-        total_energy = sum(e.energy for e in elems)
-        avg_density = sum(e.density for e in elems) / len(elems)
-        avg_volatility = sum(e.volatility for e in elems) / len(elems)
+        # 2. Multi-label classification (if enabled)
+        if self.use_emergent_blending:
+            # EMERGENT: Multiple behaviors activate, blend stats
+            activations = self.composer.classify_multi(vector)
+            weights = self.composer.get_behavior_weights(activations)
+
+            # Primary behavior for game logic
+            behavior = self.composer.get_primary_behavior(activations)
+            modifiers = self.composer.get_modifiers(activations)
+
+            # EMERGENT STAT BLENDING: Weighted average from all activated behaviors
+            damage = sum(weights[b] * self.formulas.compute_damage(vector, b) for b in weights)
+            speed = sum(weights[b] * self.formulas.compute_speed(vector, b) for b in weights)
+            area = sum(weights[b] * self.formulas.compute_area(vector, b) for b in weights)
+            duration = sum(weights[b] * self.formulas.compute_duration(vector, b) for b in weights)
+            mana_cost = sum(weights[b] * self.formulas.compute_mana_cost(vector, b) for b in weights)
+            knockback = self.formulas.compute_knockback(vector)  # Not blended (always from vector)
+
+            probabilities = {b: act.strength for act in activations for b in [act.behavior]}
+        else:
+            # SINGLE-LABEL: Nearest prototype wins
+            behavior = self.manifold.classify(vector)
+            probabilities = self.manifold.get_behavior_probabilities(vector)
+            modifiers = []
+            activations = []
+            weights = {behavior: 1.0}
+
+            # Stats from single behavior
+            damage = self.formulas.compute_damage(vector, behavior)
+            speed = self.formulas.compute_speed(vector, behavior)
+            area = self.formulas.compute_area(vector, behavior)
+            duration = self.formulas.compute_duration(vector, behavior)
+            mana_cost = self.formulas.compute_mana_cost(vector, behavior)
+            knockback = self.formulas.compute_knockback(vector)
+
+        # ===== KEEP OLD: Spell naming and visuals =====
+
+        # 5. Generate procedural spell name (keep old logic)
         states = [e.state for e in elems]
         all_tags = set()
         for e in elems:
             all_tags.update(e.tags)
+        spell_name = self._generate_name(elems, behavior, vector.temp_differential, states, all_tags)
 
-        # Temperature differential for phase-change interactions
-        temp_range = max(e.temperature for e in elems) - min(e.temperature for e in elems)
-
-        # 4. Apply multipliers to energy
-        modified_energy = total_energy * cancellation_mult * polarity_mult
-
-        # 5. Determine spell behavior from properties
-        behavior = self._determine_behavior(elems, states, all_tags, modified_energy, avg_volatility)
-
-        # 6. Compute derived stats
-        damage = int(modified_energy * 2.5)  # 250% of energy becomes damage (much more dangerous!)
-        projectile_speed = (1.0 - avg_density) * 1.2  # 50% slower than before (was 2.4)
-        area = self._compute_area(behavior, avg_volatility, states)
-        duration = self._compute_duration(behavior, states)
-        mana_cost = self._compute_mana_cost(modified_energy, len(elems))
-
-        # 7. Generate procedural spell name
-        spell_name = self._generate_name(elems, behavior, temp_range, states, all_tags)
-
-        # 8. Calculate spell color (blend element colors)
+        # 6. Blend element colors (keep old logic)
         spell_color = self._blend_colors(elems)
 
-        # Return complete spell descriptor
+        # Return complete spell descriptor (enhanced with multi-label data)
         return {
             'name': spell_name,
-            'behavior': behavior,
-            'damage': damage,
-            'speed': projectile_speed,
-            'area': area,
-            'duration': duration,
-            'mana_cost': mana_cost,
+            'behavior': behavior,  # Primary behavior (backward compatible)
+            'modifiers': modifiers,  # NEW: Secondary behaviors
+            'activations': activations,  # NEW: Full activation data
+            'weights': weights,  # NEW: Behavior weights for advanced use
+            'damage': damage,  # EMERGENT if blending enabled
+            'speed': speed,  # EMERGENT if blending enabled
+            'area': area,  # EMERGENT if blending enabled
+            'duration': duration,  # EMERGENT if blending enabled
+            'mana_cost': mana_cost,  # EMERGENT if blending enabled
+            'knockback': knockback,
             'color': spell_color,
             'effects': list(all_tags),
-            'elements': element_names,  # Store element names for terrain bonuses
+            'elements': element_names,
+            'emergent_blending': self.use_emergent_blending,  # NEW: Flag for UI
             'properties': {
-                'temperature': avg_temp,
-                'energy': modified_energy,
-                'temp_differential': temp_range,
-                'density': avg_density,
-                'volatility': avg_volatility,
-                'cancellation_mult': cancellation_mult,
-                'polarity_mult': polarity_mult
-            }
+                'temperature': vector.avg_temperature,
+                'energy': vector.total_energy,
+                'temp_differential': vector.temp_differential,
+                'density': vector.avg_density,
+                'volatility': vector.volatility_index,
+                'cancellation_mult': 1.0,  # Not used anymore
+                'polarity_mult': 1.0 + abs(vector.polarity_tension),
+            },
+            # NEW: Include property vector and probabilities
+            'property_vector': vector,
+            'behavior_probabilities': probabilities,
+            'knockback': knockback,
         }
-
-    def _check_cancellation(self, elems):
-        """
-        Check if opposing elements cancel each other.
-        Returns damage multiplier (0.5 per cancellation).
-        """
-        elem_names = set(e.name for e in elems)
-        cancellation_count = 0
-
-        for pair in self.opposing_pairs:
-            if pair[0] in elem_names and pair[1] in elem_names:
-                cancellation_count += 1
-
-        # Each cancellation reduces damage by 50%
-        return 0.5 ** cancellation_count
-
-    def _compute_polarity_bonus(self, elems):
-        """
-        Opposite polarities amplify damage (positive + negative = 2x).
-        Returns energy multiplier.
-        """
-        polarities = [e.polarity for e in elems]
-
-        # Check if both positive and negative exist
-        has_positive = 'positive' in polarities
-        has_negative = 'negative' in polarities
-
-        if has_positive and has_negative:
-            return 2.0  # Polarity clash amplifies
-        return 1.0  # No amplification
-
-    def _determine_behavior(self, elems, states, tags, energy, volatility):
-        """
-        Determine spell behavior type from element properties.
-        Returns: 'projectile', 'beam', 'aoe', 'area_denial', 'buff', 'homing', 'heal'
-        """
-        # Healing if has healing tag
-        if 'healing' in tags:
-            return 'heal'
-
-        # Self-buff if single element + defensive tag
-        if len(elems) == 1 and 'defensive' in tags:
-            return 'buff'
-
-        # Beam if instant movement + high energy
-        if any(e.movement == 'instant' for e in elems) and energy > 100:
-            return 'beam'
-
-        # Area denial if solid/liquid state + low volatility (persistent zones)
-        if ('solid' in states or 'liquid' in states) and volatility < 0.3:
-            return 'area_denial'
-
-        # AoE explosion if high volatility
-        if volatility > 0.6:
-            return 'aoe'
-
-        # Homing if has swift tag + air/gas element
-        if 'swift' in tags and 'gas' in states:
-            return 'homing'
-
-        # Default: projectile
-        return 'projectile'
-
-    def _compute_area(self, behavior, volatility, states):
-        """
-        Compute area of effect based on behavior and properties.
-        """
-        base_area = 2.0
-
-        # Behavior modifiers
-        if behavior == 'aoe':
-            base_area = 5.0 + (volatility * 5)  # High volatility = bigger explosion
-        elif behavior == 'area_denial':
-            base_area = 4.0
-        elif behavior == 'beam':
-            base_area = 1.0  # Narrow beam
-        elif behavior == 'buff':
-            base_area = 0.5  # Self-only
-
-        # State modifiers
-        if 'gas' in states:
-            base_area += 2
-        if 'plasma' in states:
-            base_area += 1.5
-
-        return round(base_area, 1)
-
-    def _compute_duration(self, behavior, states):
-        """
-        Compute effect duration based on behavior and states.
-        """
-        base_duration = 1.0
-
-        # Behavior modifiers
-        if behavior == 'area_denial':
-            base_duration = 5.0  # Long-lasting zones
-        elif behavior == 'buff':
-            base_duration = 3.0  # Buffs last a while
-        elif behavior == 'aoe':
-            base_duration = 0.5  # Instant explosion
-
-        # State modifiers
-        if 'solid' in states:
-            base_duration += 2.0
-        if 'liquid' in states:
-            base_duration += 0.5
-
-        return round(base_duration, 1)
 
     def _generate_name(self, elems, behavior, temp_diff, states, tags):
         """
         Generate procedural spell name from properties.
+        (KEPT FROM OLD VERSION - same naming logic)
         """
         # Special combinations (temperature-based phase changes)
         if temp_diff > 500:
@@ -246,12 +187,22 @@ class InteractionEngine:
                 return "Nature's Blessing"
             return 'Protective Ward'
 
+        if behavior == 'homing':
+            if 'arcane' in [e.name for e in elems]:
+                return 'Arcane Seeker'
+            return 'Tracking Bolt'
+
+        if behavior == 'chain':
+            if 'lightning' in [e.name for e in elems]:
+                return 'Chain Lightning'
+            return 'Bouncing Orb'
+
         # Single element spells
         if len(elems) == 1:
             elem = elems[0]
             spell_names = {
                 'fire': 'Fire Blast',
-                'lightning': 'Chain Lightning',
+                'lightning': 'Lightning Strike',
                 'water': 'Water Stream',
                 'ice': 'Ice Shard',
                 'earth': 'Boulder Throw',
@@ -282,10 +233,18 @@ class InteractionEngine:
         if len(elems) >= 4:
             return 'Elemental Chaos'
 
+        # AOE default
+        if behavior == 'aoe':
+            return 'Explosive Blast'
+
+        # Projectile default
+        return 'Elemental Projectile'
+
     def _blend_colors(self, elems):
         """
         Blend element colors for spell visual.
         Returns RGB tuple (average of all element colors).
+        (KEPT FROM OLD VERSION)
         """
         if not elems:
             return (255, 255, 255)  # White default
@@ -296,17 +255,3 @@ class InteractionEngine:
         b = sum(e.color[2] for e in elems) // len(elems)
 
         return (r, g, b)
-
-    def _compute_mana_cost(self, energy, element_count):
-        """
-        Compute mana cost based on spell power.
-
-        Formula: base_cost_per_element * element_count + (energy * 0.15)
-        - More elements = higher cost
-        - More energy/damage = higher cost
-        """
-        base_cost_per_element = 8  # 8 mana per element
-        energy_factor = 0.15  # 15% of energy
-
-        cost = (base_cost_per_element * element_count) + (energy * energy_factor)
-        return int(max(5, cost))  # Minimum 5 mana

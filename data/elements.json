@@ -7,7 +7,7 @@
     "movement": "rising",
     "density": 0.3,
     "volatility": 0.7,
-    "polarity": "positive",
+    "polarity": "negative",
     "tags": ["destructive", "consuming", "hot"],
     "color": [255, 69, 0],
     "icon": "🔥"
@@ -20,7 +20,7 @@
     "movement": "instant",
     "density": 0.1,
     "volatility": 0.9,
-    "polarity": "positive",
+    "polarity": "negative",
     "tags": ["destructive", "stunning", "conductive"],
     "color": [255, 255, 100],
     "icon": "⚡"
@@ -98,7 +98,7 @@
     "movement": "instant",
     "density": 0.0,
     "volatility": 0.3,
-    "polarity": "positive",
+    "polarity": "neutral",
     "tags": ["purifying", "revealing", "hot"],
     "color": [255, 255, 200],
     "icon": "✨"

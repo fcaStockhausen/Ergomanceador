@@ -75,10 +75,23 @@ class Menu:
 
         self.selected_action = None
 
+        # Controller navigation
+        self.selected_index = 0  # Currently selected item via controller
+        self.using_controller = False  # Track if controller was last used
+
     def update(self, mouse_pos):
         """Update menu state"""
-        for item in self.menu_items:
+        # Update hover states for mouse
+        for i, item in enumerate(self.menu_items):
             item.update(mouse_pos)
+            # If mouse is hovering, switch to mouse mode
+            if item.hovered and self.using_controller:
+                self.using_controller = False
+
+        # If using controller, force hover on selected item
+        if self.using_controller:
+            for i, item in enumerate(self.menu_items):
+                item.hovered = (i == self.selected_index)
 
     def handle_event(self, event):
         """Handle menu input events"""
@@ -94,6 +107,20 @@ class Menu:
             if event.key == pygame.K_ESCAPE:
                 return 'back'
 
+            # Arrow keys for navigation (also enables controller mode)
+            if event.key == pygame.K_UP or event.key == pygame.K_w:
+                self.using_controller = True
+                self.selected_index = (self.selected_index - 1) % len(self.menu_items)
+            elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                self.using_controller = True
+                self.selected_index = (self.selected_index + 1) % len(self.menu_items)
+            elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                # Select current item
+                if self.using_controller:
+                    action = self.menu_items[self.selected_index].action
+                    self.selected_action = action
+                    return action
+
             # Number keys for quick selection
             if pygame.K_1 <= event.key <= pygame.K_9:
                 index = event.key - pygame.K_1
@@ -101,6 +128,28 @@ class Menu:
                     action = self.menu_items[index].action
                     self.selected_action = action
                     return action
+
+        # Controller D-pad navigation
+        if event.type == pygame.JOYBUTTONDOWN:
+            # A button (0 on Xbox controller) = select
+            if event.button == 0:
+                action = self.menu_items[self.selected_index].action
+                self.selected_action = action
+                logging.info(f"Controller selected: {self.menu_items[self.selected_index].text}")
+                return action
+            # B button (1) = back
+            elif event.button == 1:
+                return 'back'
+            # D-pad up (11 on macOS)
+            elif event.button == 11:
+                self.using_controller = True
+                self.selected_index = (self.selected_index - 1) % len(self.menu_items)
+                logging.info(f"Menu up: selected {self.menu_items[self.selected_index].text}")
+            # D-pad down (12 on macOS)
+            elif event.button == 12:
+                self.using_controller = True
+                self.selected_index = (self.selected_index + 1) % len(self.menu_items)
+                logging.info(f"Menu down: selected {self.menu_items[self.selected_index].text}")
 
         return None
 
@@ -118,7 +167,7 @@ class Menu:
             item.draw(screen)
 
         # Hint
-        hint = self.font_hint.render("Use mouse or number keys (1-9) | ESC to go back", True, (120, 120, 150))
+        hint = self.font_hint.render("Mouse/Arrows/D-pad to navigate | Enter/A to select | ESC/B to go back", True, (120, 120, 150))
         hint_x = SCREEN_WIDTH // 2 - hint.get_width() // 2
         screen.blit(hint, (hint_x, SCREEN_HEIGHT - 50))
 

@@ -261,11 +261,18 @@ This prevents the common isometric movement bug where controls feel "rotated 45�
 - ✅ Emergent spell effects from property combinations
 - ✅ Element queueing system (max 6 elements, ordered combinations - supports keyboard chords)
 - ✅ Real-time spell preview UI showing computed damage/area/duration/temperature
-- ✅ Multiple spell behaviors: projectile, beam, AOE, heal, buff, homing, chain, split (9 total)
+- ✅ Multiple spell behaviors: projectile, beam, AOE, heal, buff, shield, homing, chain, split (10 total)
+- ✅ **HYBRID/MULTI-BEHAVIOR COMPOSITIONS** - Manifold's multi-label classification FULLY INTEGRATED
+  - Chain + Heal = Chain Heal (heals caster, will chain to allies)
+  - Projectile + Heal = Healing Projectile (damage + self-heal on cast)
+  - Projectile + AOE = Exploding Projectile (AOE burst at target)
+  - Any + Shield = Spell grants shield to caster
+  - Modifiers applied when activation strength >20%
+  - Element combo example for Chain Heal: Nature + Nature + Nature + Lightning + Arcane
 - ✅ Procedural spell naming based on property interactions
 - ✅ Nature element healing with visual feedback (green/cyan +numbers)
 - ✅ 12D property vector space with manifold classification
-- ✅ Behavior prototypes with distance-based classification
+- ✅ Behavior prototypes with distance-based classification (10 prototypes covering full space)
 - ✅ Custom prototype support (saved to `data/custom_prototypes.json`)
 
 **Combat System:**

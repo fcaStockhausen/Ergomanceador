@@ -33,18 +33,24 @@ class EffectManager:
         """
         Spawn visual effect based on spell behavior.
 
+        Supports HYBRID/MULTI-BEHAVIOR compositions from manifold classification.
+        Primary behavior determines main effect, modifiers add secondary effects.
+
         Args:
             player_x, player_y: Caster cartesian position
             target_x, target_y: Target cartesian position
-            spell_data: Dict with spell properties
+            spell_data: Dict with spell properties (includes 'behavior', 'modifiers', 'weights')
             owner: 'player' or 'bot' - who cast this spell
         """
         behavior = spell_data.get('behavior', 'projectile')
+        modifiers = spell_data.get('modifiers', [])  # Secondary behaviors
+        weights = spell_data.get('weights', {behavior: 1.0})  # Behavior strengths
         color = spell_data.get('color', (255, 255, 255))
         area = spell_data.get('area', 1.0)
         duration = spell_data.get('duration', 1.0)
 
-        logging.info(f"Spawning {behavior} effect: {spell_data.get('name', 'Unknown')} (owner: {owner})")
+        modifier_str = f" + {modifiers}" if modifiers else ""
+        logging.info(f"Spawning {behavior}{modifier_str} effect: {spell_data.get('name', 'Unknown')} (owner: {owner})")
 
         if behavior == 'projectile' or behavior == 'split':
             # Create projectile (split projectiles fragment mid-flight)
@@ -195,6 +201,102 @@ class EffectManager:
                 self.sound.play('impact', volume=0.7)
                 if self.camera:
                     self.camera.shake(intensity=8.0, duration=0.2)
+
+        # ===== HYBRID/MULTI-BEHAVIOR COMPOSITION =====
+        # Apply secondary behaviors from modifiers
+        self._apply_modifiers(behavior, modifiers, weights, player_x, player_y, target_x, target_y, spell_data, owner, color, area, duration)
+
+    def _apply_modifiers(self, primary, modifiers, weights, player_x, player_y, target_x, target_y, spell_data, owner, color, area, duration):
+        """
+        Apply secondary behavior effects from multi-label classification.
+
+        This enables COMPOSED BEHAVIORS like:
+        - Chain + Heal = Chain Heal (chain lightning that heals allies)
+        - Projectile + AOE = Exploding Projectile
+        - Beam + Heal = Healing Beam
+        - etc.
+        """
+        if not modifiers:
+            return  # No secondary behaviors
+
+        import math
+
+        for modifier in modifiers:
+            modifier_weight = weights.get(modifier, 0.0)
+
+            if modifier_weight < 0.2:
+                # Skip weak modifiers (less than 20% activation)
+                continue
+
+            logging.info(f"  Applying modifier: {modifier} (weight: {modifier_weight:.2f})")
+
+            # ===== CHAIN MODIFIER =====
+            if modifier == 'chain' and primary != 'chain':
+                # Add chaining to primary effect
+                # Example: HEAL + CHAIN = Chain Heal
+                if primary == 'heal':
+                    self._spawn_chain_heal(player_x, player_y, spell_data, owner)
+
+            # ===== HEAL MODIFIER =====
+            elif modifier == 'heal' and primary != 'heal':
+                # Add healing to primary effect
+                # Example: CHAIN + HEAL = Chain Heal, PROJECTILE + HEAL = Healing Projectile
+                heal_amount = spell_data.get('damage', 50) * modifier_weight
+                if owner == 'player' and self.player:
+                    self.player.health.heal(int(heal_amount))
+                    logging.info(f"  Hybrid: Healed {int(heal_amount)} HP from {modifier}")
+                    if self.damage_numbers:
+                        self.damage_numbers.spawn(int(heal_amount), player_x, player_y, is_heal=True)
+
+            # ===== AOE MODIFIER =====
+            elif modifier == 'aoe' and primary not in ['aoe', 'area_denial']:
+                # Add AOE explosion to non-AOE effects
+                # Example: PROJECTILE + AOE = Exploding Projectile (handled on impact)
+                # For now, just add particle burst
+                emitter = ParticleEmitter(
+                    target_x, target_y,
+                    'explosion',
+                    color,
+                    duration=0.3,
+                    area=area * modifier_weight
+                )
+                self.emitters.append(emitter)
+
+            # ===== SHIELD MODIFIER =====
+            elif modifier == 'shield' and primary != 'shield':
+                # Add shield to any spell
+                # Example: PROJECTILE + SHIELD = projectile grants shield on cast
+                shield_hp = spell_data.get('damage', 50) * modifier_weight
+                if owner == 'player' and self.player:
+                    self.player.apply_shield(int(shield_hp), duration * modifier_weight)
+                    logging.info(f"  Hybrid: Applied {int(shield_hp)} HP shield")
+
+    def _spawn_chain_heal(self, player_x, player_y, spell_data, owner):
+        """
+        Spawn chain heal effect: heals caster + nearby allies.
+        Like chain lightning but for healing.
+        """
+        heal_amount = spell_data.get('damage', 50)
+
+        # Heal primary target (caster)
+        if owner == 'player' and self.player:
+            self.player.health.heal(heal_amount)
+            logging.info(f"Chain Heal: Healed player for {heal_amount} HP")
+            if self.damage_numbers:
+                self.damage_numbers.spawn(heal_amount, player_x, player_y, is_heal=True)
+
+            # TODO: Chain to nearby allies (would need ally system)
+            # For now, just heal caster with nice visual
+
+            # Healing particles
+            emitter = ParticleEmitter(
+                player_x, player_y,
+                'buff',
+                (100, 255, 100),  # Green healing color
+                duration=1.0,
+                area=2.0
+            )
+            self.emitters.append(emitter)
 
     def update(self, dt):
         """Update all effects and check collisions"""

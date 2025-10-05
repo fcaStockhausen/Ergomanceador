@@ -61,7 +61,7 @@ Debug interface enabled by default (`DEBUG_MODE = True` in [config/settings.py](
 
 ## Modular Architecture
 
-The codebase is organized into specialized modules (~5,200 LOC):
+The codebase is organized into specialized modules (~7,500 LOC with designer mode):
 
 ```
 karaokeficador/
@@ -70,13 +70,21 @@ karaokeficador/
 │   ├── settings.py                  # Screen size, FPS, movement speed (BASE_MOVEMENT_SPEED=200)
 │   ├── colors.py                    # Color constants, element colors
 │   └── controller_config.py         # Xbox controller mappings (macOS D-pad buttons)
-├── core/                            # Game loop & camera
+├── core/                            # Game loop, camera & menus
 │   ├── game.py                      # Main Game class, 3-second countdown, scoreboard
-│   └── camera.py                    # Camera follow system
-├── magic/                           # Property-based magic system
+│   ├── camera.py                    # Camera follow system
+│   └── menu.py                      # Main menu, pause menu, settings (mouse + keyboard nav)
+├── magic/                           # Property-based magic system & manifold
 │   ├── element.py                   # Element class (9 elements with properties)
 │   ├── interaction_engine.py        # Automatic spell computation from properties
-│   └── magic_system.py              # Element queueing (max 5), spell generation
+│   ├── magic_system.py              # Element queueing (max 6), spell generation
+│   ├── behavior_manifold.py         # 12D property space, geometric classification
+│   ├── behavior_classifier.py       # Single-label Voronoi classification
+│   ├── behavior_composer.py         # Multi-label weighted classification
+│   ├── property_vector.py           # PropertyVector class (12D representation)
+│   ├── spell_formulas.py            # Formula-based stat computation (emergent)
+│   ├── behavior_space_visualizer.py # Standalone high-DPI visualizer (1200x900)
+│   └── manifold_visualizer.py       # Alternative visualizer implementation
 ├── entities/                        # Game entities
 │   ├── player.py                    # Player entity (300 HP, frame-rate independent movement)
 │   ├── enemy.py                     # Enemy bots with Health component
@@ -101,16 +109,29 @@ karaokeficador/
 │       ├── spell_preview.py         # Real-time spell stats preview
 │       ├── debug_panel.py           # Debug overlay with coordinates
 │       ├── controller_hud.py        # Controller element page display (3 pages)
-│       └── scoreboard.py            # Deathmatch scoreboard (Q3-style)
+│       ├── scoreboard.py            # Deathmatch scoreboard (Q3-style)
+│       ├── manifold_panel.py        # Embedded manifold HUD (320x280, PCA 12D→2D)
+│       ├── testing_panel.py         # Designer mode testing lab (left panel)
+│       ├── prototype_editor.py      # Designer mode editor (right panel, 12 sliders)
+│       └── property_vector_display.py  # Property vector visualization
 ├── input/                           # Input handling
 │   ├── input_manager.py             # Unified keyboard + controller input
 │   └── controller_handler.py        # Xbox controller (D-pad buttons, rumble feedback)
 ├── audio/                           # Procedural audio generation
 │   ├── sound_generator.py           # Runtime waveform synthesis
 │   └── sound_library.py             # Sound effect manager
-├── tests/                           # TAS testing framework
+├── designer/                        # In-game designer mode toolkit
+│   ├── designer_mode.py             # Main coordinator (testing/editing/visualizing)
+│   └── prototype_manager.py         # CRUD operations, JSON persistence
+├── world/
+│   └── spatial_manifold.py          # Topological space utilities
+├── tests/                           # TAS & pytest testing framework
 │   ├── test_runner.py               # Test execution engine
-│   └── tas/                         # Test scripts (14 verified tests)
+│   ├── tas/                         # Test scripts (14 verified TAS tests)
+│   └── unit/                        # Unit tests (70+ pytest tests)
+│       ├── test_behavior_manifold.py
+│       ├── test_property_vector.py
+│       └── test_spatial_manifold.py
 └── utils/
     └── logger.py                    # Event-based logging
 ```
@@ -159,7 +180,9 @@ karaokeficador/
    - **Start Button:** Quit game
    - **Rumble Feedback:** Haptic vibration on spell cast and page changes
 
-3. **Property-Based Magic System** ([magic/interaction_engine.py](magic/interaction_engine.py))
+3. **Property-Based Magic System with Manifold Classification**
+
+   **Interaction Engine** ([magic/interaction_engine.py](magic/interaction_engine.py)):
    - **Automatic Interaction Engine**: Spell effects computed from element properties, not hard-coded combinations
    - **Element Properties**:
      - `temperature`: Kelvin temperature (enables phase-change interactions)
@@ -172,7 +195,27 @@ karaokeficador/
      - State combinations determine spell area and duration
      - Tag synergies create specialized effects
    - **Procedural Effect Generation**: Damage, area, duration computed from combined properties
-   - Players discover combinations through experimentation
+
+   **Manifold Classification** ([magic/behavior_manifold.py](magic/behavior_manifold.py)):
+   - **12D Property Vector Space**: Every spell is a point in 12-dimensional property space
+     - `thermal_flux`, `avg_temperature`, `temp_differential`
+     - `state_transition_energy`, `phase_diversity`, `density_gradient`
+     - `avg_density`, `volatility_index`, `chaos_factor`
+     - `total_energy`, `energy_density`, `polarity_tension`
+   - **Geometric Classification**: Behaviors defined by distance to prototype points
+   - **Riemannian Metric**: Distance computed as d = sqrt((v1-v2)^T * G * (v1-v2))
+   - **Voronoi Partitioning**: Single-label (nearest wins)
+   - **Multi-Label Blending**: Distance thresholds allow composable behaviors
+     - Strong (<0.8), Medium (0.8-1.2), Weak (1.2-1.6), None (>1.6)
+
+   **Designer Mode Integration** ([designer/designer_mode.py](designer/designer_mode.py)):
+   - **In-Game Toolkit**: F1 toggles designer mode (no coding required!)
+   - **Testing Lab**: Queue 1-6 elements, view 12D vector, analyze distances
+   - **Prototype Editor**: 12 visual sliders for editing behavior prototypes
+   - **Validation**: Automatic spacing checks (>0.4 distance recommended)
+   - **Persistence**: Custom prototypes saved to `data/custom_prototypes.json`
+   - **Decision Helper**: AI recommendations (create new / tune existing)
+   - Players discover behaviors through experimentation, designers define prototypes
 
 ### Key Classes & Modules
 

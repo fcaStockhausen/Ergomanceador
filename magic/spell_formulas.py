@@ -237,7 +237,9 @@ class SpellFormulas:
                     'buff': 0.0,           # Buffs don't damage
                     'heal': 0.0,           # Heals don't damage
                     'homing': 1.1,         # Homing slightly stronger (harder to dodge)
-                    'chain': 0.9           # Chain splits damage
+                    'chain': 0.9,          # Chain splits damage
+                    'shield': 0.0,         # Shields don't damage
+                    'split': 0.6           # Split: low per-fragment damage
                 }
             },
             'area': {
@@ -249,7 +251,9 @@ class SpellFormulas:
                     'buff': 0.5,
                     'heal': 2.0,
                     'homing': 1.2,
-                    'chain': 1.0
+                    'chain': 1.0,
+                    'shield': 2.0,        # Shield covers the caster
+                    'split': 0.8           # Split fragments are small
                 },
                 'volatility_factor': 6.0,
                 'diversity_factor': 3.0,
@@ -266,6 +270,7 @@ class SpellFormulas:
                     'heal': 0.0,
                     'homing': 6.0,         # Slightly slower but tracks
                     'chain': 10.0,         # Fast jumps
+                    'shield': 0.0,         # Shield is stationary
                     'split': 8.0           # Same as projectile
                 },
                 'density_multiplier': 2.0,
@@ -281,7 +286,9 @@ class SpellFormulas:
                     'buff': 3.0,           # Buffs last a while
                     'heal': 0.1,           # Instant
                     'homing': 2.0,         # Tracking duration
-                    'chain': 0.8           # Chain duration per jump
+                    'chain': 0.8,          # Chain duration per jump
+                    'shield': 4.0,         # Shield persists to absorb hits
+                    'split': 1.0           # Same as projectile
                 },
                 'persistence_multiplier': 2.0,
                 'stability_factor': 1.5,
@@ -300,7 +307,9 @@ class SpellFormulas:
                     'buff': 0.8,           # Buffs cheaper
                     'heal': 0.9,           # Healing slightly cheaper
                     'homing': 1.1,         # Homing slightly expensive
-                    'chain': 1.2           # Chain expensive (multi-hit)
+                    'chain': 1.2,          # Chain expensive (multi-hit)
+                    'shield': 1.0,         # Shield: standard cost
+                    'split': 1.1           # Split: slightly expensive (multi-projectile)
                 }
             },
             'range': {
@@ -312,7 +321,9 @@ class SpellFormulas:
                     'buff': 0.0,
                     'heal': 3.0,
                     'homing': 12.0,
-                    'chain': 8.0
+                    'chain': 8.0,
+                    'shield': 1.0,        # Self-range only
+                    'split': 8.0           # Same as projectile
                 },
                 'projectile_multiplier': 5.0,
                 'beam_multiplier': 1.5

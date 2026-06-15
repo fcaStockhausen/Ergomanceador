@@ -112,37 +112,39 @@ class InteractionEngine:
         # 6. Blend element colors (keep old logic)
         spell_color = self._blend_colors(elems)
 
-        # Return complete spell descriptor (enhanced with multi-label data)
+        # Compute range from the blended behaviors
+        spell_range = sum(
+            weights[b] * self.formulas.compute_range(vector, b) for b in weights
+        )
+
+        # Return complete spell descriptor
         return {
             'name': spell_name,
-            'behavior': behavior,  # Primary behavior (backward compatible)
-            'modifiers': modifiers,  # NEW: Secondary behaviors
-            'activations': activations,  # NEW: Full activation data
-            'weights': weights,  # NEW: Behavior weights for advanced use
-            'damage': damage,  # EMERGENT if blending enabled
-            'speed': speed,  # EMERGENT if blending enabled
-            'area': area,  # EMERGENT if blending enabled
-            'duration': duration,  # EMERGENT if blending enabled
-            'mana_cost': mana_cost,  # EMERGENT if blending enabled
+            'behavior': behavior,
+            'modifiers': modifiers,
+            'activations': activations,
+            'weights': weights,
+            'damage': damage,
+            'speed': speed,
+            'area': area,
+            'duration': duration,
+            'range': round(spell_range, 1),
+            'mana_cost': mana_cost,
             'knockback': knockback,
             'color': spell_color,
             'effects': list(all_tags),
             'elements': element_names,
-            'emergent_blending': self.use_emergent_blending,  # NEW: Flag for UI
-            'property_vector': vector,  # NEW: Property vector for emergent behaviors (split count, etc)
+            'emergent_blending': self.use_emergent_blending,
+            'property_vector': vector,
             'properties': {
                 'temperature': vector.avg_temperature,
                 'energy': vector.total_energy,
                 'temp_differential': vector.temp_differential,
                 'density': vector.avg_density,
                 'volatility': vector.volatility_index,
-                'cancellation_mult': 1.0,  # Not used anymore
                 'polarity_mult': 1.0 + abs(vector.polarity_tension),
             },
-            # NEW: Include property vector and probabilities
-            'property_vector': vector,
             'behavior_probabilities': probabilities,
-            'knockback': knockback,
         }
 
     def _generate_name(self, elems, behavior, temp_diff, states, tags):
@@ -198,6 +200,20 @@ class InteractionEngine:
                 return 'Chain Lightning'
             return 'Bouncing Orb'
 
+        if behavior == 'shield':
+            if 'earth' in [e.name for e in elems]:
+                return 'Stone Aegis'
+            if 'ice' in [e.name for e in elems]:
+                return 'Frost Barrier'
+            return 'Arcane Shield'
+
+        if behavior == 'split':
+            if 'fire' in [e.name for e in elems]:
+                return 'Fragmenting Flare'
+            if 'arcane' in [e.name for e in elems]:
+                return 'Arcane Splinter'
+            return 'Shatter Bolt'
+
         # Single element spells
         if len(elems) == 1:
             elem = elems[0]
@@ -238,7 +254,6 @@ class InteractionEngine:
         if behavior == 'aoe':
             return 'Explosive Blast'
 
-        # Projectile default
         return 'Elemental Projectile'
 
     def _blend_colors(self, elems):

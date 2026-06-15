@@ -225,10 +225,10 @@ class SpellFormulas:
         """
         return {
             'damage': {
-                'energy_multiplier': 2.5,  # Damage per energy point
-                'polarity_factor': 0.5,    # Polarity amplification
-                'thermal_factor': 0.3,     # Thermal damage contribution
-                'saturation_limit': 300,   # Max damage before saturation
+                'energy_multiplier': 1.2,  # Damage per energy point
+                'polarity_factor': 0.3,    # Polarity amplification
+                'thermal_factor': 0.15,    # Thermal damage contribution
+                'saturation_limit': 55,    # Max damage per hit (high TTK)
                 'behavior_modifiers': {
                     'projectile': 1.0,
                     'beam': 0.8,           # Beams do less damage but hit instantly

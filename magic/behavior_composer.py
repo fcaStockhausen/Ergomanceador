@@ -53,21 +53,8 @@ class BehaviorComposer:
 
         Returns list of activated behaviors sorted by strength (strongest first).
         """
-        # Convert property vector to 12D array
-        vector_12d = np.array([
-            property_vector.thermal_flux / 2.0,
-            property_vector.avg_temperature / 2000.0,
-            property_vector.temp_differential / 2000.0,
-            property_vector.state_transition_energy / 1000.0,
-            property_vector.phase_diversity,
-            property_vector.density_gradient,
-            property_vector.avg_density,
-            property_vector.volatility_index,
-            property_vector.chaos_factor,
-            property_vector.total_energy / 400.0,
-            property_vector.energy_density / 150.0,
-            property_vector.polarity_tension
-        ])
+        # Use manifold's vector conversion (single source of truth)
+        vector_12d = self.manifold._vector_to_array(property_vector)
 
         # Compute distances to all prototypes
         activations = []
@@ -98,7 +85,9 @@ class BehaviorComposer:
 
     def get_primary_behavior(self, activations: List[BehaviorActivation]) -> str:
         """Get the dominant (strongest) behavior"""
-        return activations[0].behavior if activations else 'projectile'
+        if activations:
+            return activations[0].behavior
+        return 'projectile'
 
     def get_modifiers(self, activations: List[BehaviorActivation]) -> List[str]:
         """Get secondary behaviors that modify the primary"""

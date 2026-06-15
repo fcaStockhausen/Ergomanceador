@@ -16,7 +16,7 @@ Features emergent spell interactions, expanding AOE effects, and frame-rate inde
 
 - 🚀 **[Quick Start - Manifold HUD](docs/QUICKSTART_MANIFOLD.md)** - Run game with real-time behavior visualization
 - 🎨 **[Designer Guide](docs/DESIGNER_GUIDE_BEHAVIOR_TUNING.md)** - Tune spell behaviors (no coding!)
-- 🎵 **[Audio Editor Guide](AUDIO_EDITOR_GUIDE.md)** - Load custom sounds with ADSR envelopes
+- 🎵 **[Audio Editor Guide](docs/AUDIO_EDITOR_GUIDE.md)** - Load custom sounds with ADSR envelopes
 - 🧠 **[Manifold Systems](docs/MANIFOLD_SYSTEMS.md)** - Understand the property-based magic system
 - 💡 **[Emergent vs Hardcoded](docs/EMERGENT_VS_HARDCODED.md)** - Design philosophy
 - 📖 **[Complete Documentation Index](docs/INDEX.md)** - Full table of contents

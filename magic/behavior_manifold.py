@@ -17,6 +17,12 @@ from typing import Dict, List, Tuple
 from dataclasses import dataclass
 from magic.property_vector import PropertyVector
 
+# Log-scale normalization constants for temperature-derived dimensions.
+# Using log10 because temperature in Kelvin is a ratio scale and the
+# element range spans 3 orders of magnitude (100K – 30000K).
+_LOG_MAX_TEMP = math.log10(30000.0)    # ~4.477
+_LOG_MAX_STE = math.log10(20000.0)     # state_transition_energy upper bound
+
 
 @dataclass
 class BehaviorRegion:
@@ -141,25 +147,25 @@ class BehaviorManifold:
 
     def _vector_to_array(self, vector: PropertyVector) -> np.ndarray:
         """
-        Convert PropertyVector to numpy array for linear algebra.
+        Convert PropertyVector to normalized numpy array.
 
-        IMPORTANT: All dimensions are normalized to [0, 1] range for
-        homogeneous distance calculations. Without normalization,
-        high-magnitude dimensions dominate the metric.
+n        All dimensions are normalized to [0, 1] (polarity stays [-1, 1]).
+        Temperature-derived dims use LOG SCALE because element temps span
+        3 orders of magnitude (shadow 100K → lightning 30000K).
         """
         return np.array([
-            vector.thermal_flux / 2.0,        # Normalize: typical range 0-2
-            vector.avg_temperature / 2000.0,  # Normalize: 0-2000K → 0-1
-            vector.temp_differential / 2000.0, # Normalize: 0-2000K → 0-1
-            vector.state_transition_energy / 1000.0,  # Normalize: 0-1000 → 0-1
-            vector.phase_diversity,           # Already 0-1
-            vector.density_gradient,          # Already 0-1
-            vector.avg_density,               # Already 0-1
-            vector.volatility_index,          # Already 0-1
-            vector.chaos_factor,              # Already 0-1
-            vector.total_energy / 400.0,      # Normalize: 0-400 → 0-1
-            vector.energy_density / 150.0,    # Normalize: 0-150 → 0-1
-            vector.polarity_tension           # Already -1 to 1
+            min(vector.thermal_flux / 2.0, 1.0),                                    # 0: thermal flux (0-2)
+            math.log10(max(vector.avg_temperature, 1.0)) / _LOG_MAX_TEMP,            # 1: log temp
+            math.log10(max(vector.temp_differential, 1.0)) / _LOG_MAX_TEMP,          # 2: log temp diff
+            math.log10(max(vector.state_transition_energy, 1.0)) / _LOG_MAX_STE,     # 3: log state trans
+            min(vector.phase_diversity, 1.0),                                        # 4: already 0-1
+            min(vector.density_gradient, 1.0),                                       # 5: already 0-1
+            min(vector.avg_density, 1.0),                                            # 6: already 0-1
+            min(vector.volatility_index, 1.0),                                       # 7: already 0-1
+            min(vector.chaos_factor, 1.0),                                           # 8: already 0-1
+            min(vector.total_energy / 600.0, 1.0),                                   # 9: energy (max ~6×150)
+            min(vector.energy_density / 150.0, 1.0),                                 # 10: energy/elem
+            max(-1.0, min(vector.polarity_tension, 1.0)),                           # 11: polarity [-1,1]
         ])
 
     def _create_behavior_regions(self) -> List[BehaviorRegion]:
@@ -169,224 +175,160 @@ class BehaviorManifold:
         These are the "ideal" property vectors for each behavior.
         Real spells are classified by proximity to these prototypes.
         """
-        # Identity metric tensor (Euclidean distance) for all behaviors
-        # Can be customized per behavior to create curved regions
-        identity_metric = np.eye(12)
-
-        # Define prototype property vectors for each behavior
-        # Each value represents the ideal position in that dimension
+        # Data-driven prototypes: positions computed from canonical element
+        # combinations (see tools/chord_lab.py), then manually adjusted to
+        # resolve collisions.  Metric tensors use per-dimension weights so
+        # each behavior's "defining" axes dominate the distance calculation.
+        #
+        # Dim order:
+        #  0 flux  1 log_temp  2 log_tdiff  3 log_ste  4 phase_div
+        #  5 dgrad 6 avg_dens  7 volat      8 chaos    9 tot_eng
+        # 10 e_dens 11 polarity
 
         regions = []
 
-        # PROJECTILE: Balanced, moderate in all properties
+        # --- helpers -----------------------------------------------------
+        def _proto(vals):
+            return np.array(vals, dtype=float)
+
+        def _metric(w):
+            """Diagonal metric tensor from per-dimension weights."""
+            return np.diag(np.array(w, dtype=float))
+        # -----------------------------------------------------------------
+
+        # PROJECTILE — single-element attack (fire, arcane)
+        # Defined by: moderate energy density, neutral-ish polarity
         regions.append(BehaviorRegion(
             name=self.PROJECTILE,
-            prototype=np.array([
-                0.3,   # thermal_flux (moderate)
-                0.4,   # avg_temperature (moderate)
-                0.3,   # temp_differential (moderate)
-                0.3,   # state_transition_energy
-                0.5,   # phase_diversity
-                0.4,   # density_gradient
-                0.5,   # avg_density (medium)
-                0.4,   # volatility (moderate)
-                0.3,   # chaos_factor
-                0.5,   # total_energy
-                0.5,   # energy_density
-                0.0    # polarity_tension (neutral)
+            prototype=_proto([
+                0.15, 0.67, 0.15, 0.55, 0.25, 0.05, 0.30, 0.60, 0.05, 0.20, 0.65, -0.50
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                1, 1, 1, 1, 1, 1, 1.5, 1.5, 1, 1.5, 2.0, 0.5
+            ]),
             threshold=1.0
         ))
 
-        # BEAM: Low density, high thermal flux, high energy
+        # BEAM — focused energy line (arcane + shadow)
+        # Defined by: HIGH energy density, LOW volatility, moderate flux
+        # Separated from CHAIN by lower flux and higher energy concentration
         regions.append(BehaviorRegion(
             name=self.BEAM,
-            prototype=np.array([
-                0.8,   # thermal_flux (HIGH - rapid energy transfer)
-                0.6,   # avg_temperature (high)
-                0.5,   # temp_differential
-                0.3,   # state_transition_energy
-                0.3,   # phase_diversity
-                0.5,   # density_gradient
-                0.2,   # avg_density (LOW - fast)
-                0.3,   # volatility (controlled)
-                0.2,   # chaos_factor (controlled)
-                0.7,   # total_energy (HIGH)
-                0.8,   # energy_density (HIGH - concentrated)
-                0.0    # polarity_tension
+            prototype=_proto([
+                0.50, 0.62, 0.50, 0.50, 0.25, 0.25, 0.35, 0.35, 0.10, 0.45, 0.85, -0.20
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                1.5, 1, 1, 1, 0.5, 1, 1.5, 2.0, 1.5, 1, 3.0, 1
+            ]),
             threshold=1.0
         ))
 
-        # AOE: High volatility, high phase diversity, chaos
+        # AOE — explosive burst (triple fire, triple-stacked elements)
+        # Defined by: HIGH total energy, HIGH volatility, stacked same element
+        # Separated from PROJECTILE by higher total_energy and volatility
         regions.append(BehaviorRegion(
             name=self.AOE,
-            prototype=np.array([
-                0.5,   # thermal_flux
-                0.7,   # avg_temperature (hot explosion)
-                0.6,   # temp_differential
-                0.4,   # state_transition_energy
-                0.8,   # phase_diversity (HIGH - multi-state chaos)
-                0.6,   # density_gradient
-                0.4,   # avg_density
-                0.9,   # volatility (HIGH - explosive)
-                0.7,   # chaos_factor (HIGH - unpredictable expansion)
-                0.6,   # total_energy
-                0.5,   # energy_density
-                0.0    # polarity_tension
+            prototype=_proto([
+                0.05, 0.69, 0.05, 0.58, 0.25, 0.00, 0.30, 0.70, 0.00, 0.55, 0.67, -0.80
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                0.5, 1, 0.5, 1, 1, 0.5, 1, 3.0, 1.5, 3.5, 1, 0.5
+            ]),
             threshold=1.0
         ))
 
-        # AREA_DENIAL: Low volatility, high persistence, high density
+        # AREA_DENIAL — persistent zone (earth, ice+earth)
+        # Defined by: high density, low volatility, moderate persistence
+        # Separated from SHIELD by LOWER density and broader tolerance
         regions.append(BehaviorRegion(
             name=self.AREA_DENIAL,
-            prototype=np.array([
-                0.2,   # thermal_flux (LOW - stable)
-                0.4,   # avg_temperature
-                0.2,   # temp_differential (stable)
-                0.8,   # state_transition_energy (HIGH - persistent)
-                0.4,   # phase_diversity
-                0.3,   # density_gradient
-                0.8,   # avg_density (HIGH - solid, physical)
-                0.2,   # volatility (LOW - doesn't explode)
-                0.2,   # chaos_factor (LOW - controlled)
-                0.4,   # total_energy
-                0.3,   # energy_density
-                0.0    # polarity_tension
+            prototype=_proto([
+                0.02, 0.54, 0.10, 0.45, 0.25, 0.02, 0.88, 0.10, 0.01, 0.15, 0.37, -0.30
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                1, 1, 1, 2.0, 0.5, 0.5, 2.0, 3.0, 2.0, 1, 1, 1
+            ]),
             threshold=1.0
         ))
 
-        # BUFF: Low chaos, low energy, positive polarity, HIGH persistence
+        # BUFF — enhancement aura (earth+nature, water+nature)
+        # Defined by: positive polarity, low chaos, moderate density
         regions.append(BehaviorRegion(
             name=self.BUFF,
-            prototype=np.array([
-                0.1,   # thermal_flux (VERY LOW - stable aura)
-                0.2,   # avg_temperature (cool)
-                0.1,   # temp_differential (very stable)
-                0.7,   # state_transition_energy (HIGH - long-lasting)
-                0.1,   # phase_diversity (VERY simple - pure)
-                0.1,   # density_gradient (uniform)
-                0.6,   # avg_density (somewhat solid - protective)
-                0.1,   # volatility (VERY LOW - stable)
-                0.05,  # chaos_factor (VERY LOW - controlled)
-                0.2,   # total_energy (LOW - defensive, not offensive)
-                0.2,   # energy_density
-                0.6    # polarity_tension (MODERATE POSITIVE - protective)
+            prototype=_proto([
+                0.01, 0.55, 0.19, 0.47, 0.38, 0.20, 0.55, 0.28, 0.07, 0.19, 0.38, 0.50
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                1, 1, 1, 1, 1, 1, 1, 2.0, 2.0, 1, 1, 2.5
+            ]),
             threshold=1.0
         ))
 
-        # HEAL: VERY HIGH polarity, low thermal, ACTIVE energy (not passive like buff)
+        # HEAL — restoration (nature, nature+nature)
+        # Defined by: VERY HIGH positive polarity, low thermal activity
         regions.append(BehaviorRegion(
             name=self.HEAL,
-            prototype=np.array([
-                0.3,   # thermal_flux (LOW but more than buff - active restoration)
-                0.4,   # avg_temperature (warmer - life energy)
-                0.2,   # temp_differential
-                0.2,   # state_transition_energy (LOW - quick, not persistent)
-                0.3,   # phase_diversity (more diverse - flowing life)
-                0.3,   # density_gradient
-                0.3,   # avg_density (LOW - flowing, not solid like buff)
-                0.3,   # volatility (higher than buff - active effect)
-                0.2,   # chaos_factor (higher than buff)
-                0.5,   # total_energy (HIGHER - actively heals)
-                0.5,   # energy_density (HIGHER - concentrated healing)
-                0.95   # polarity_tension (VERY HIGH POSITIVE - pure life)
+            prototype=_proto([
+                0.00, 0.55, 0.00, 0.44, 0.25, 0.00, 0.40, 0.40, 0.00, 0.17, 0.47, 1.00
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5.0
+            ]),
             threshold=1.0
         ))
 
-        # SHIELD: VERY HIGH density, VERY HIGH persistence, solid barrier
-        # CRITICAL: This fills the high-density + high-persistence gap in manifold
-        # DISTINCT from BUFF (buff = enhancement, shield = absorption)
+        # SHIELD — solid barrier (earth+earth, ice+earth+earth)
+        # Defined by: VERY HIGH density, very low volatility, high persistence
+        # Separated from AREA_DENIAL by HIGHER density weight (narrower region)
         regions.append(BehaviorRegion(
             name=self.SHIELD,
-            prototype=np.array([
-                0.15,  # thermal_flux (VERY LOW - energy contained, not radiating)
-                0.3,   # avg_temperature (cool, stable)
-                0.1,   # temp_differential (VERY stable - no phase changes)
-                0.9,   # state_transition_energy (VERY HIGH - extremely persistent)
-                0.2,   # phase_diversity (LOW - single solid state)
-                0.2,   # density_gradient (LOW - uniform structure)
-                0.95,  # avg_density (VERY HIGH - solid crystalline barrier)
-                0.1,   # volatility (VERY LOW - doesn't break easily)
-                0.1,   # chaos_factor (VERY LOW - ordered crystal structure)
-                0.4,   # total_energy (MODERATE - defensive, not offensive)
-                0.4,   # energy_density (moderate - distributed in structure)
-                0.4    # polarity_tension (MODERATE POSITIVE - protective but not "holy")
+            prototype=_proto([
+                0.02, 0.55, 0.05, 0.48, 0.25, 0.00, 0.98, 0.05, 0.00, 0.25, 0.35, 0.05
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                0.5, 0.5, 0.5, 2.0, 0.5, 0.5, 5.0, 3.0, 2.0, 1, 1, 1
+            ]),
             threshold=1.0
         ))
 
-        # HOMING: Low density, moderate chaos, high energy
+        # HOMING — seeking projectile (arcane+arcane, triple arcane)
+        # Defined by: LOW density, moderate volatility, high energy concentration
+        # Separated from PROJECTILE by lower density and higher energy
         regions.append(BehaviorRegion(
             name=self.HOMING,
-            prototype=np.array([
-                0.4,   # thermal_flux
-                0.5,   # avg_temperature
-                0.4,   # temp_differential
-                0.3,   # state_transition_energy
-                0.5,   # phase_diversity
-                0.5,   # density_gradient
-                0.3,   # avg_density (LOW - fast, agile)
-                0.5,   # volatility (moderate)
-                0.6,   # chaos_factor (MODERATE - adaptive path)
-                0.6,   # total_energy (high)
-                0.6,   # energy_density
-                0.0    # polarity_tension
+            prototype=_proto([
+                0.00, 0.67, 0.00, 0.56, 0.25, 0.00, 0.18, 0.60, 0.10, 0.50, 0.80, 0.00
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                1, 1, 1, 1, 1, 1, 3.0, 1, 2.5, 2.0, 2.0, 1
+            ]),
             threshold=1.0
         ))
 
-        # CHAIN: High thermal flux, moderate density, high energy
+        # CHAIN — jumping energy (fire+shadow, arcane+shadow)
+        # Defined by: VERY HIGH thermal flux, moderate energy
+        # Separated from BEAM by higher flux
         regions.append(BehaviorRegion(
             name=self.CHAIN,
-            prototype=np.array([
-                0.9,   # thermal_flux (VERY HIGH - rapid transfer between targets)
-                0.6,   # avg_temperature
-                0.7,   # temp_differential
-                0.4,   # state_transition_energy
-                0.6,   # phase_diversity
-                0.5,   # density_gradient
-                0.4,   # avg_density (moderate)
-                0.5,   # volatility
-                0.5,   # chaos_factor
-                0.7,   # total_energy (HIGH - needs power to jump)
-                0.6,   # energy_density
-                0.0    # polarity_tension
+            prototype=_proto([
+                0.90, 0.62, 0.70, 0.54, 0.38, 0.28, 0.53, 0.42, 0.16, 0.33, 0.65, -0.75
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                4.0, 1, 2.0, 1, 1, 1, 1, 1, 1, 1.5, 1, 1
+            ]),
             threshold=1.0
         ))
 
-        # SPLIT: High chaos, high temp, LOW density (non-dense gaseous splitting)
+        # SPLIT — fragmenting chaos (fire+light, arcane+fire+light)
+        # Defined by: HIGH chaos, high temp, high flux, low density
         regions.append(BehaviorRegion(
             name=self.SPLIT,
-            prototype=np.array([
-                0.6,   # thermal_flux (HIGH - energetic splitting)
-                0.8,   # avg_temperature (VERY HIGH - hot, chaotic)
-                0.7,   # temp_differential (HIGH - unstable)
-                0.3,   # state_transition_energy (LOW - easily fragments)
-                0.7,   # phase_diversity (HIGH - multi-state chaos)
-                0.6,   # density_gradient (HIGH - uneven distribution causes split)
-                0.2,   # avg_density (VERY LOW - gaseous, non-dense)
-                0.8,   # volatility (HIGH - explosive tendency)
-                0.9,   # chaos_factor (VERY HIGH - unpredictable fragmentation)
-                0.6,   # total_energy (HIGH - enough to split)
-                0.5,   # energy_density (moderate)
-                -0.3   # polarity_tension (SLIGHTLY NEGATIVE - unstable)
+            prototype=_proto([
+                0.78, 0.78, 0.82, 0.70, 0.38, 0.14, 0.16, 0.52, 0.57, 0.45, 0.72, -0.42
             ]),
-            metric_tensor=identity_metric,
+            metric_tensor=_metric([
+                1.5, 2.0, 1, 1, 1.5, 1, 2.0, 1.5, 4.0, 1, 1, 1
+            ]),
             threshold=1.0
         ))
 

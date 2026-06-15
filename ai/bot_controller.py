@@ -78,6 +78,9 @@ class BotController:
         self.boltzmann_tau = 0.35
         self.current_dt = 0.016
 
+        self.action_lock = 0.0          # Minimum seconds before re-evaluating
+        self.action_lock_duration = 0.4 # Prevents behavior thrashing
+
         logging.info(f"Bot spawned with {self.personality}")
 
     def update(self, dt, targets):
@@ -96,9 +99,18 @@ class BotController:
             return
 
         incoming_threat = self._detect_incoming_projectiles()
-        utilities = self._compute_utilities(incoming_threat)
-        action = self._boltzmann_select(utilities)
 
+        # Re-evaluate action only if action lock expired, unless there's
+        # an imminent threat (dodge overrides lock)
+        if self.action_lock > 0 and incoming_threat < 0.5:
+            action = self.current_action
+        else:
+            utilities = self._compute_utilities(incoming_threat)
+            action = self._boltzmann_select(utilities)
+            if action != self.current_action:
+                self.action_lock = self.action_lock_duration
+
+        self.action_lock = max(0, self.action_lock - dt)
         self.current_action = action
 
         if action == 'attack':

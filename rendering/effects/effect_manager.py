@@ -355,31 +355,60 @@ class EffectManager:
                         # Kill projectile
                         proj.alive = False
 
-                # Bot projectiles hit player
-                elif proj.owner == 'bot' and self.player and self.player.health.is_alive:
-                    # Check collision with player
-                    dx = self.player.cart_x - proj.cart_x
-                    dy = self.player.cart_y - proj.cart_y
-                    distance = math.sqrt(dx**2 + dy**2)
+                # Bot projectiles hit player and other enemies (except caster)
+                elif proj.owner == 'bot':
+                    hit_entity = None
 
-                    if distance <= self.player.collision_radius:
-                        # Hit player!
+                    # Check player
+                    if self.player and self.player.health.is_alive:
+                        dx = self.player.cart_x - proj.cart_x
+                        dy = self.player.cart_y - proj.cart_y
+                        distance = math.sqrt(dx**2 + dy**2)
+                        if distance <= getattr(self.player, 'collision_radius', 0.5):
+                            hit_entity = self.player
+
+                    # Check other enemies (exclude caster via origin proximity)
+                    if not hit_entity:
+                        for enemy in self.enemies:
+                            if not enemy.health.is_alive:
+                                continue
+                            # Skip if enemy is at projectile origin (the caster)
+                            origin_dx = enemy.cart_x - proj.origin_x
+                            origin_dy = enemy.cart_y - proj.origin_y
+                            if math.sqrt(origin_dx**2 + origin_dy**2) < 1.5:
+                                continue
+                            dx = enemy.cart_x - proj.cart_x
+                            dy = enemy.cart_y - proj.cart_y
+                            distance = math.sqrt(dx**2 + dy**2)
+                            if distance <= getattr(enemy, 'collision_radius', 0.5):
+                                hit_entity = enemy
+                                break
+
+                    if hit_entity:
                         damage = proj.spell_data.get('damage', 10)
-                        self.player.health.damage(damage)
-                        logging.info(f"Bot projectile hit player! Dealt {damage} damage")
+                        hit_entity.health.damage(damage)
 
-                        # Spawn floating damage number
-                        self.damage_numbers.spawn(damage, self.player.cart_x, self.player.cart_y)
+                        target_name = 'player' if hit_entity == self.player else 'enemy'
+                        logging.info(f"Bot projectile hit {target_name}! Dealt {damage} damage")
 
-                        # Screen shake
+                        self.damage_numbers.spawn(damage, hit_entity.cart_x, hit_entity.cart_y)
+
                         if self.camera:
                             shake_intensity = min(5.0 + (damage * 0.3), 15.0)
                             self.camera.shake(intensity=shake_intensity, duration=0.15)
 
-                        # Impact sound
                         self.sound.play('impact', volume=0.6)
 
-                        # Kill projectile
+                        if hasattr(hit_entity, 'apply_knockback'):
+                            knockback_force = 3.0 + (damage * 0.05)
+                            dx = hit_entity.cart_x - proj.cart_x
+                            dy = hit_entity.cart_y - proj.cart_y
+                            distance = math.sqrt(dx**2 + dy**2)
+                            if distance > 0.01:
+                                hit_entity.apply_knockback(
+                                    dx / distance, dy / distance, knockback_force
+                                )
+
                         proj.alive = False
 
             # Check if projectile split and spawn children

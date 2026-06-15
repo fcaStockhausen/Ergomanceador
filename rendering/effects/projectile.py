@@ -25,9 +25,11 @@ class Projectile:
         """
         self.cart_x = start_x
         self.cart_y = start_y
+        self.origin_x = start_x
+        self.origin_y = start_y
         self.target_x = target_x
         self.target_y = target_y
-        self.owner = owner  # Track who cast this projectile
+        self.owner = owner  # 'player' or 'bot'
         self.is_child = is_child  # Child projectiles don't split again
 
         self.spell_data = spell_data

@@ -207,14 +207,9 @@ class BotController:
         for elem in elements:
             self.magic_system.queue_element(elem)
 
-        lead = 0.3 + 0.7 * self.personality.cunning
-        mag = math.sqrt(self.target_dx ** 2 + self.target_dy ** 2)
-        if mag > 0:
-            tx = self.enemy.cart_x + (self.target_dx / mag) * (self.target_distance * lead)
-            ty = self.enemy.cart_y + (self.target_dy / mag) * (self.target_distance * lead)
-        else:
-            tx = self.enemy.cart_x
-            ty = self.enemy.cart_y
+        # Aim directly at target's current position (homing spells will track)
+        tx = self.target.cart_x
+        ty = self.target.cart_y
 
         spell_data = self.magic_system.cast_spell()
         if spell_data and self.effect_manager:

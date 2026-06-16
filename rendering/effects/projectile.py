@@ -72,7 +72,7 @@ class Projectile:
             return
 
         # Move projectile (frame-rate independent)
-        if self.behavior == 'projectile' or self.behavior == 'homing' or self.behavior == 'split':
+        if self.behavior == 'projectile' or self.behavior == 'split':
             self.cart_x += self.vel_x * dt
             self.cart_y += self.vel_y * dt
 
@@ -89,9 +89,37 @@ class Projectile:
                 if self.lifetime >= self.split_time:
                     self._perform_split()
 
+        elif self.behavior == 'homing':
+            self._update_homing(dt)
+
         # Beams are instant - die immediately
         elif self.behavior == 'beam':
             self.alive = False
+
+    def _update_homing(self, dt):
+        """Homing steering: curve velocity toward current target position."""
+        dx = self.target_x - self.cart_x
+        dy = self.target_y - self.cart_y
+        distance = math.sqrt(dx * dx + dy * dy)
+
+        if distance < 0.5:
+            self.alive = False
+            return
+
+        # Desired direction (toward target)
+        desired_vx = (dx / distance) * self.speed
+        desired_vy = (dy / distance) * self.speed
+
+        # Steer: blend current velocity with desired (turn rate)
+        turn_rate = 3.0  # How fast it can curve (higher = tighter turn)
+        blend = min(1.0, turn_rate * dt)
+
+        self.vel_x += (desired_vx - self.vel_x) * blend
+        self.vel_y += (desired_vy - self.vel_y) * blend
+
+        # Move
+        self.cart_x += self.vel_x * dt
+        self.cart_y += self.vel_y * dt
 
     def _perform_split(self):
         """

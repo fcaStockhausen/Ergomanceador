@@ -304,6 +304,10 @@ class EffectManager:
 
         # Update projectiles and check hits
         for proj in self.projectiles[:]:
+            # Retarget homing projectiles to nearest alive enemy
+            if proj.behavior == 'homing' and proj.alive:
+                self._retarget_homing(proj)
+
             proj.update(dt)
 
             if proj.alive:
@@ -465,6 +469,34 @@ class EffectManager:
 
         # Update damage numbers
         self.damage_numbers.update(dt)
+
+    def _retarget_homing(self, proj):
+        """Retarget homing projectile to nearest alive enemy of opposite faction."""
+        import math
+
+        candidates = []
+        if proj.owner == 'player':
+            candidates = [e for e in self.enemies if e.health.is_alive]
+        else:
+            # Bot projectiles target player and other bots (not caster)
+            if self.player and self.player.health.is_alive:
+                candidates.append(self.player)
+            for e in self.enemies:
+                if e.health.is_alive:
+                    # Skip caster (near origin)
+                    odx = e.cart_x - proj.origin_x
+                    ody = e.cart_y - proj.origin_y
+                    if math.sqrt(odx**2 + ody**2) > 1.5:
+                        candidates.append(e)
+
+        if not candidates:
+            return
+
+        nearest = min(candidates, key=lambda c: (
+            (c.cart_x - proj.cart_x) ** 2 + (c.cart_y - proj.cart_y) ** 2
+        ))
+        proj.target_x = nearest.cart_x
+        proj.target_y = nearest.cart_y
 
     def draw(self, screen, camera_offset_x=0, camera_offset_y=0):
         """Draw all effects"""

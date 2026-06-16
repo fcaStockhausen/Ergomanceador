@@ -197,14 +197,14 @@ n        All dimensions are normalized to [0, 1] (polarity stays [-1, 1]).
         # -----------------------------------------------------------------
 
         # PROJECTILE — single-element attack (fire, arcane)
-        # Defined by: moderate energy density, neutral-ish polarity
+        # Defined by: moderate energy density, neutral polarity
         regions.append(BehaviorRegion(
             name=self.PROJECTILE,
             prototype=_proto([
-                0.15, 0.67, 0.15, 0.55, 0.25, 0.05, 0.30, 0.60, 0.05, 0.20, 0.65, -0.50
+                0.15, 0.67, 0.15, 0.55, 0.25, 0.05, 0.30, 0.60, 0.05, 0.20, 0.72, -0.25
             ]),
             metric_tensor=_metric([
-                1, 1, 1, 1, 1, 1, 1.5, 1.5, 1, 1.5, 2.0, 0.5
+                1, 1, 1, 1, 1, 1, 1.5, 1.5, 1, 1.5, 2.0, 1.0
             ]),
             threshold=1.0
         ))
@@ -225,11 +225,10 @@ n        All dimensions are normalized to [0, 1] (polarity stays [-1, 1]).
 
         # AOE — explosive burst (triple fire, triple-stacked elements)
         # Defined by: HIGH total energy, HIGH volatility, stacked same element
-        # Separated from PROJECTILE by higher total_energy and volatility
         regions.append(BehaviorRegion(
             name=self.AOE,
             prototype=_proto([
-                0.05, 0.69, 0.05, 0.58, 0.25, 0.00, 0.30, 0.70, 0.00, 0.55, 0.67, -0.80
+                0.10, 0.75, 0.10, 0.62, 0.25, 0.05, 0.25, 0.85, 0.10, 0.68, 0.70, -0.50
             ]),
             metric_tensor=_metric([
                 0.5, 1, 0.5, 1, 1, 0.5, 1, 3.0, 1.5, 3.5, 1, 0.5
@@ -239,19 +238,19 @@ n        All dimensions are normalized to [0, 1] (polarity stays [-1, 1]).
 
         # AREA_DENIAL — persistent zone (earth, ice+earth)
         # Defined by: high density, low volatility, moderate persistence
-        # Separated from SHIELD by LOWER density and broader tolerance
+        # Separated from SHIELD by LOWER density and HIGHER volatility tolerance
         regions.append(BehaviorRegion(
             name=self.AREA_DENIAL,
             prototype=_proto([
-                0.02, 0.54, 0.10, 0.45, 0.25, 0.02, 0.88, 0.10, 0.01, 0.15, 0.37, -0.30
+                0.02, 0.54, 0.10, 0.52, 0.25, 0.02, 0.72, 0.15, 0.01, 0.15, 0.37, 0.00
             ]),
             metric_tensor=_metric([
-                1, 1, 1, 2.0, 0.5, 0.5, 2.0, 3.0, 2.0, 1, 1, 1
+                1, 1, 1, 2.0, 0.5, 0.5, 3.0, 4.0, 2.0, 1, 1, 1
             ]),
             threshold=1.0
         ))
 
-        # BUFF — enhancement aura (earth+nature, water+nature)
+        # BUFF — enhancement aura (earth+nature, water+nature, light+nature)
         # Defined by: positive polarity, low chaos, moderate density
         regions.append(BehaviorRegion(
             name=self.BUFF,
@@ -259,7 +258,7 @@ n        All dimensions are normalized to [0, 1] (polarity stays [-1, 1]).
                 0.01, 0.55, 0.19, 0.47, 0.38, 0.20, 0.55, 0.28, 0.07, 0.19, 0.38, 0.50
             ]),
             metric_tensor=_metric([
-                1, 1, 1, 1, 1, 1, 1, 2.0, 2.0, 1, 1, 2.5
+                1, 1, 1, 1, 1, 1, 1, 2.0, 2.0, 1, 1, 3.0
             ]),
             threshold=1.0
         ))
@@ -279,25 +278,25 @@ n        All dimensions are normalized to [0, 1] (polarity stays [-1, 1]).
 
         # SHIELD — solid barrier (earth+earth, ice+earth+earth)
         # Defined by: VERY HIGH density, very low volatility, high persistence
-        # Separated from AREA_DENIAL by HIGHER density weight (narrower region)
+        # Separated from AREA_DENIAL by HIGHER density + persistence weights
         regions.append(BehaviorRegion(
             name=self.SHIELD,
             prototype=_proto([
-                0.02, 0.55, 0.05, 0.48, 0.25, 0.00, 0.98, 0.05, 0.00, 0.25, 0.35, 0.05
+                0.02, 0.55, 0.05, 0.60, 0.25, 0.00, 0.97, 0.05, 0.00, 0.25, 0.35, 0.00
             ]),
             metric_tensor=_metric([
-                0.5, 0.5, 0.5, 2.0, 0.5, 0.5, 5.0, 3.0, 2.0, 1, 1, 1
+                0.5, 0.5, 0.5, 3.0, 0.5, 0.5, 5.0, 3.0, 2.0, 1, 1, 1
             ]),
             threshold=1.0
         ))
 
         # HOMING — seeking projectile (arcane+arcane, triple arcane)
-        # Defined by: LOW density, moderate volatility, high energy concentration
+        # Defined by: LOW density, high energy concentration, MODERATE volatility
         # Separated from PROJECTILE by lower density and higher energy
         regions.append(BehaviorRegion(
             name=self.HOMING,
             prototype=_proto([
-                0.00, 0.67, 0.00, 0.56, 0.25, 0.00, 0.18, 0.60, 0.10, 0.50, 0.80, 0.00
+                0.00, 0.67, 0.00, 0.56, 0.25, 0.00, 0.18, 0.50, 0.10, 0.50, 0.80, 0.00
             ]),
             metric_tensor=_metric([
                 1, 1, 1, 1, 1, 1, 3.0, 1, 2.5, 2.0, 2.0, 1
@@ -311,7 +310,7 @@ n        All dimensions are normalized to [0, 1] (polarity stays [-1, 1]).
         regions.append(BehaviorRegion(
             name=self.CHAIN,
             prototype=_proto([
-                0.90, 0.62, 0.70, 0.54, 0.38, 0.28, 0.53, 0.42, 0.16, 0.33, 0.65, -0.75
+                0.88, 0.65, 0.72, 0.54, 0.38, 0.28, 0.40, 0.45, 0.30, 0.40, 0.68, -0.40
             ]),
             metric_tensor=_metric([
                 4.0, 1, 2.0, 1, 1, 1, 1, 1, 1, 1.5, 1, 1
@@ -319,12 +318,12 @@ n        All dimensions are normalized to [0, 1] (polarity stays [-1, 1]).
             threshold=1.0
         ))
 
-        # SPLIT — fragmenting chaos (fire+light, arcane+fire+light)
+        # SPLIT — fragmenting chaos (fire+light, arcane+fire+light, lightning)
         # Defined by: HIGH chaos, high temp, high flux, low density
         regions.append(BehaviorRegion(
             name=self.SPLIT,
             prototype=_proto([
-                0.78, 0.78, 0.82, 0.70, 0.38, 0.14, 0.16, 0.52, 0.57, 0.45, 0.72, -0.42
+                0.82, 0.88, 0.85, 0.72, 0.42, 0.18, 0.14, 0.58, 0.72, 0.50, 0.75, -0.10
             ]),
             metric_tensor=_metric([
                 1.5, 2.0, 1, 1, 1.5, 1, 2.0, 1.5, 4.0, 1, 1, 1

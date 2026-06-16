@@ -7,7 +7,7 @@
     "movement": "rising",
     "density": 0.3,
     "volatility": 0.7,
-    "polarity": "negative",
+    "polarity": "neutral",
     "tags": ["destructive", "consuming", "hot"],
     "color": [255, 69, 0],
     "icon": "🔥"
@@ -46,7 +46,7 @@
     "movement": "static",
     "density": 0.9,
     "volatility": 0.1,
-    "polarity": "negative",
+    "polarity": "neutral",
     "tags": ["defensive", "freezing", "cold"],
     "color": [150, 200, 255],
     "icon": "❄️"
@@ -98,7 +98,7 @@
     "movement": "instant",
     "density": 0.0,
     "volatility": 0.3,
-    "polarity": "neutral",
+    "polarity": "positive",
     "tags": ["purifying", "revealing", "hot"],
     "color": [255, 255, 200],
     "icon": "✨"
@@ -109,9 +109,9 @@
     "energy": 90,
     "state": "gas",
     "movement": "flowing",
-    "density": 0.8,
+    "density": 0.35,
     "volatility": 0.2,
-    "polarity": "negative",
+    "polarity": "neutral",
     "tags": ["draining", "obscuring", "cold"],
     "color": [50, 20, 70],
     "icon": "🌑"

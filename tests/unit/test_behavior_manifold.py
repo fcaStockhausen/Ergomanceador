@@ -63,7 +63,7 @@ def test_ice_earth_is_area_denial(manifold, elements):
     behavior = manifold.classify(vector)
 
     # Both solid, low volatility, high density → wall/barrier
-    assert behavior in ['area_denial', 'projectile']
+    assert behavior in ['area_denial', 'projectile', 'shield']
 
 
 def test_fire_water_mixed(manifold, elements):

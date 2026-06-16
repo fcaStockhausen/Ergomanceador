@@ -100,19 +100,22 @@ class BattleSimulator:
 
         # Statistics
         self.stats = {
-            'spells_cast': defaultdict(int),
-            'spells_by_element': defaultdict(int),
             'behaviors_by_bot': defaultdict(Counter),
-            'damage_dealt': defaultdict(float),
             'damage_taken': defaultdict(float),
-            'kills': defaultdict(int),
             'deaths': defaultdict(int),
-            'heals': defaultdict(float),
-            'behavior_timeline': [],
             'hp_timeline': [],
+            'spells': [],           # Full spell log: (time, owner, elements, name, behavior, damage)
+            'spell_chords': Counter(),    # 'fire+fire+fire': count
+            'spell_names': Counter(),     # 'Explosive Blast': count
+            'spell_behaviors': Counter(), # 'aoe': count
+            'spell_by_bot': defaultdict(Counter),  # bot_id -> {chord: count}
+            'heal_events': [],
         }
 
         self.sim_time = 0.0
+
+        # Spell tracking: intercept spawn_spell_effect
+        self._wrap_effect_manager()
 
     def log(self, msg, level='info'):
         self.events.append((self.sim_time, level, msg))
@@ -122,6 +125,32 @@ class BattleSimulator:
             c = colors.get(level, '')
             bot_time = f"[{self.sim_time:6.1f}s]"
             print(f"  {C_DIM}{bot_time}{C_RESET} {c}{msg}{C_RESET}")
+
+    def _wrap_effect_manager(self):
+        """Wrap spawn_spell_effect to intercept all spell casts."""
+        original_spawn = self.effect_manager.spawn_spell_effect
+        self._original_spawn = original_spawn
+
+        def wrapped_spawn(px, py, tx, ty, spell_data, owner='player'):
+            # Capture spell info
+            elements = spell_data.get('elements', [])
+            chord = '+'.join(elements) if elements else '?'
+            name = spell_data.get('name', 'Unknown')
+            behavior = spell_data.get('behavior', 'projectile')
+            damage = int(spell_data.get('damage', 0))
+
+            self.stats['spells'].append((self.sim_time, owner, chord, name, behavior, damage))
+            self.stats['spell_chords'][chord] += 1
+            self.stats['spell_names'][name] += 1
+            self.stats['spell_behaviors'][behavior] += 1
+            self.stats['spell_by_bot'][owner][chord] += 1
+
+            if self.verbose:
+                self.log(f"{owner} cast {name} [{chord}] → {behavior} (dmg:{damage})", 'cast')
+
+            return original_spawn(px, py, tx, ty, spell_data, owner)
+
+        self.effect_manager.spawn_spell_effect = wrapped_spawn
 
     def run(self):
         """Run the simulation."""
@@ -172,11 +201,6 @@ class BattleSimulator:
                        new_action not in ('wander',) and \
                        prev_action not in ('wander',):
                         self.log(f"{enemy.bot_id} → {new_action}", 'info')
-
-            # Detect new projectiles (spells cast)
-            new_projs = self.effect_manager.projectiles[proj_before:] if proj_before < len(self.effect_manager.projectiles) else []
-            # Actually, projectiles might have been added at any index. Let's count by tracking
-            # who cast by checking recent spawn calls. Simpler: check effect_manager projectiles count.
 
             # Update effect manager (handles projectile movement, collision, damage)
             self.effect_manager.update(dt)
@@ -248,7 +272,7 @@ class BattleSimulator:
             hp = enemy.health.current_health
             status = 'ALIVE' if hp > 0 else 'DEAD'
             color = C_GREEN if hp > 0 else C_RED
-            kills = self.stats['kills'].get(enemy.bot_id, 0)
+            kills = 0  # Kill attribution not tracked in headless sim
             deaths = self.stats['deaths'].get(enemy.bot_id, 0)
             print(f"{enemy.bot_id:<10} {hp:>6.0f} {color}{status:<8}{C_RESET} "
                   f"{kills:>6} {deaths:>7}")
@@ -307,12 +331,48 @@ class BattleSimulator:
                     row += f" {color}{hp:>8.0f}{C_RESET}"
                 print(row)
 
-        # 6. Spell frequency (from behavior when casting)
-        print(f"\n{C_BOLD}SPELL CASTING SUMMARY{C_RESET}")
-        cast_attacks = sum(self.stats['behaviors_by_bot'][bid]['attack']
-                          for bid in [e.bot_id for e, _, _ in self.bots])
-        print(f"  Total 'attack' actions: {cast_attacks}")
-        print(f"  Avg casts per bot: {cast_attacks / len(self.bots):.1f}")
+        # 6. Chord usage
+        print(f"\n{C_BOLD}CHORD USAGE (most cast element combinations){C_RESET}")
+        for chord, count in self.stats['spell_chords'].most_common(10):
+            pct = count / sum(self.stats['spell_chords'].values()) * 100
+            print(f"  {chord:<25s} {count:>4d} ({pct:4.1f}%)")
+
+        # 7. Emergent behaviors
+        print(f"\n{C_BOLD}EMERGENT BEHAVIORS{C_RESET}")
+        total_spells = sum(self.stats['spell_behaviors'].values())
+        for behavior, count in self.stats['spell_behaviors'].most_common():
+            pct = count / total_spells * 100 if total_spells else 0
+            bar_len = 25
+            filled = int(pct / 100 * bar_len)
+            bar = '█' * filled + '░' * (bar_len - filled)
+            color = C_GREEN if behavior in ('attack', 'projectile') else \
+                    C_YELLOW if behavior in ('heal', 'buff', 'shield') else \
+                    C_RED if behavior in ('aoe', 'split') else \
+                    C_CYAN if behavior in ('chain', 'beam', 'homing') else C_DIM
+            print(f"  {color}{behavior:<12}{C_RESET} {count:>4d} ({pct:5.1f}%) {bar}")
+
+        # 8. Spell names
+        print(f"\n{C_BOLD}SPELL NAMES (most cast spells){C_RESET}")
+        for name, count in self.stats['spell_names'].most_common(10):
+            print(f"  {name:<25s} {count:>4d}")
+
+        # 9. Per-bot chord preferences
+        print(f"\n{C_BOLD}PER-BOT CHORD PREFERENCES{C_RESET}")
+        for enemy, ai, _ in self.bots:
+            owner = 'bot' if enemy.bot_id == self.bots[0][0].bot_id else 'bot'
+            chords = self.stats['spell_by_bot'].get('bot', Counter())
+            if not chords:
+                continue
+            # We can't distinguish which bot cast since owner='bot' for all
+            # Show aggregate instead
+            break
+
+        # Show aggregate bot chords
+        bot_chords = self.stats['spell_by_bot'].get('bot', Counter())
+        if bot_chords:
+            print(f"  (All bots combined — owner tag is 'bot')")
+            for chord, count in bot_chords.most_common(5):
+                print(f"    {chord:<25s} {count:>4d}")
 
         print(f"\n{C_DIM}Simulation completed at t={self.sim_time:.1f}s{C_RESET}")
         print()

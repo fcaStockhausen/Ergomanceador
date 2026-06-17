@@ -13,7 +13,11 @@ TILE_HEIGHT = 32
 GRID_SIZE = 50  # Larger arena for more tactical gameplay
 
 # Entity movement settings (centralized, frame-rate independent)
-BASE_MOVEMENT_SPEED = 200.0  # Base speed for all entities in units/second (frame-rate independent)
+BASE_MOVEMENT_SPEED = 200.0  # Screen-space speed (goes through screen_to_cart transform)
+
+# Cartesian-space speed for AI/bots that bypass screen_to_cart.
+# Player's average cartesian speed ≈ 7 units/sec after isometric transform.
+CART_MOVEMENT_SPEED = 6.0  # cartesian units/second
 
 # Debug mode
 DEBUG_MODE = True

@@ -12,7 +12,7 @@ variety.
 import math
 import random
 import logging
-from config.settings import GRID_SIZE, BASE_MOVEMENT_SPEED
+from config.settings import GRID_SIZE, CART_MOVEMENT_SPEED
 
 
 class BotPersonality:
@@ -225,8 +225,8 @@ class BotController:
         if mag > 0:
             spd = 0.8 + 0.4 * self.personality.mobility
             self._move_enemy(
-                (self.target_dx / mag) * BASE_MOVEMENT_SPEED * spd * self.current_dt,
-                (self.target_dy / mag) * BASE_MOVEMENT_SPEED * spd * self.current_dt,
+                (self.target_dx / mag) * CART_MOVEMENT_SPEED * spd * self.current_dt,
+                (self.target_dy / mag) * CART_MOVEMENT_SPEED * spd * self.current_dt,
             )
 
     def _execute_kite(self):
@@ -238,8 +238,8 @@ class BotController:
             strafe_y = back_x
             sign = 1 if random.random() < 0.5 else -1
             self._move_enemy(
-                (back_x * 0.3 + strafe_x * 0.7 * sign) * BASE_MOVEMENT_SPEED * 0.9 * self.current_dt,
-                (back_y * 0.3 + strafe_y * 0.7 * sign) * BASE_MOVEMENT_SPEED * 0.9 * self.current_dt,
+                (back_x * 0.3 + strafe_x * 0.7 * sign) * CART_MOVEMENT_SPEED * 0.9 * self.current_dt,
+                (back_y * 0.3 + strafe_y * 0.7 * sign) * CART_MOVEMENT_SPEED * 0.9 * self.current_dt,
             )
 
     def _execute_dodge(self):
@@ -252,8 +252,8 @@ class BotController:
             perp_y = dx / mag
             sign = 1 if random.random() < 0.5 else -1
             self._move_enemy(
-                perp_x * sign * BASE_MOVEMENT_SPEED * 2.0 * self.current_dt,
-                perp_y * sign * BASE_MOVEMENT_SPEED * 2.0 * self.current_dt,
+                perp_x * sign * CART_MOVEMENT_SPEED * 2.0 * self.current_dt,
+                perp_y * sign * CART_MOVEMENT_SPEED * 2.0 * self.current_dt,
             )
         self.dodge_timer = self.dodge_cooldown
 
@@ -280,8 +280,8 @@ class BotController:
 
             if ddist > 0:
                 self._move_enemy(
-                    (ddx / ddist) * BASE_MOVEMENT_SPEED * 1.5 * self.current_dt,
-                    (ddy / ddist) * BASE_MOVEMENT_SPEED * 1.5 * self.current_dt,
+                    (ddx / ddist) * CART_MOVEMENT_SPEED * 1.5 * self.current_dt,
+                    (ddy / ddist) * CART_MOVEMENT_SPEED * 1.5 * self.current_dt,
                 )
 
     def _execute_retreat(self):
@@ -292,8 +292,8 @@ class BotController:
         dist = math.sqrt(dx ** 2 + dy ** 2)
         if dist > 1.0:
             self._move_enemy(
-                (dx / dist) * BASE_MOVEMENT_SPEED * 0.8 * self.current_dt,
-                (dy / dist) * BASE_MOVEMENT_SPEED * 0.8 * self.current_dt,
+                (dx / dist) * CART_MOVEMENT_SPEED * 0.8 * self.current_dt,
+                (dy / dist) * CART_MOVEMENT_SPEED * 0.8 * self.current_dt,
             )
 
     def _execute_wander(self, dt):
@@ -304,8 +304,8 @@ class BotController:
             self.wander_direction = (math.cos(angle), math.sin(angle))
             self.wander_timer = random.uniform(1.5, 3.5)
         self._move_enemy(
-            self.wander_direction[0] * BASE_MOVEMENT_SPEED * 0.4 * self.current_dt,
-            self.wander_direction[1] * BASE_MOVEMENT_SPEED * 0.4 * self.current_dt,
+            self.wander_direction[0] * CART_MOVEMENT_SPEED * 0.4 * self.current_dt,
+            self.wander_direction[1] * CART_MOVEMENT_SPEED * 0.4 * self.current_dt,
         )
 
     # ================================================================
